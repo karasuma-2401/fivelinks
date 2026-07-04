@@ -21,3 +21,4 @@ fun Application.module() {
         }
     }
 }
+
