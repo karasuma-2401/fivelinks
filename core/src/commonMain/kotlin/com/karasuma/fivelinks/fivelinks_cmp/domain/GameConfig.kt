@@ -17,6 +17,8 @@ data class GameConfig(
         require(sequenceToWin > 0) { "sequenceToWin must be positive." }
     }
 
+    val teams: Set<Team> = teamsByPlayerIndex.toSet()
+
     companion object {
         fun handSizeForPlayerCount(playerCount: Int) = when (playerCount) {
             2 -> 7
