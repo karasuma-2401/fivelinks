@@ -5,5 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class ErrorCodes {
     PROTOCOL_VERSION_MISMATCH,
-    INTERNAL_ERROR
+    INTERNAL_ERROR,
+    INVALID_REQUEST,
 }
