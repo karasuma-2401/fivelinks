@@ -19,9 +19,7 @@ data class Deck(val cards: List<Card>) {
 
     companion object {
         fun twoShuffleDeck(seed: Long): Deck {
-            val pool = Cards.fullDeck + Cards.fullDeck
-            pool.shuffled(Random(seed))
-            return Deck(pool)
+            return Deck((Cards.fullDeck + Cards.fullDeck).shuffled(Random(seed)))
         }
     }
 }

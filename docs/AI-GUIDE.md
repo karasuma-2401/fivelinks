@@ -3,7 +3,8 @@
 > Dự án: **fivelinks-cmp**  
 > Mục đích: hướng dẫn **tự tay triển khai** từ đầu đến cuối (AlphaZero tối giản: Tactical → ISMCTS → Heuristic/Neural + ONNX).  
 > Tài liệu này **không thay thế** source hiện tại — bạn thêm/sửa code theo từng phase khi học.  
-> Cập nhật: 20/07/2026
+> Cập nhật: 23/07/2026  
+> Đồng bộ với: BE HTTP (`/game/new`, `/ai/move`), `GameState` `@Serializable`, `Player.isAi`, package `model/`
 
 ---
 
@@ -25,6 +26,7 @@
 14. [Phase 9 — Tests, arena, docs](#phase-9--tests-arena-docs)
 15. [Checklist Definition of Done](#15-checklist-definition-of-done)
 16. [Phụ lục](#16-phụ-lục)
+17. [Changelog guide](#17-changelog-guide)
 
 ---
 
@@ -36,12 +38,13 @@ Bot AI cho game kiểu **Sequence / Five Links**:
 
 | Lớp | Vai trò |
 |-----|---------|
-| **AiFacadeService** | UI chỉ gọi 1 API (`AiService`) |
+| **AiFacadeService** | Caller (UI **hoặc** HTTP route) chỉ gọi 1 API (`AiService`) |
 | **DifficultyConfig** | Budget sim / time / temperature / mode |
 | **TacticalEngine** | Nước forced (win ngay, chặn open-4) |
 | **SearchEngine** | MCTS trên thế giới đã determinize (bài ẩn) |
 | **EvaluationEngine** | Value + policy prior (Heuristic và/hoặc Neural) |
-| **ONNX Runtime** | Inference model nhẹ trên Android / iOS / JVM |
+| **ONNX Runtime** | Inference model nhẹ trên Android / iOS / **JVM server** |
+| **HTTP `/ai/move`** | (đã có) Client gửi `GameState` lên server nhờ bot chọn nước |
 
 ### 1.2 Vì sao không copy AlphaZero “thuần”?
 
@@ -82,23 +85,26 @@ Game có:
 
 ```
 core/src/commonMain/kotlin/.../ai/
-  AiService.kt           # interface + enum Difficulty
+  AiService.kt           # interface + enum Difficulty (@Serializable)
   HeuristicEvaluator.kt  # 1-ply greedy + softmax
   HeuristicWeights.kt    # trọng số tay
 ```
 
-### 2.2 Contract hiện tại
+Lõi AI **chưa** có Facade / Tactical / MCTS / ONNX — vẫn đúng điểm xuất phát của guide này.
+
+### 2.2 Contract `AiService` hiện tại
 
 ```kotlin
 // AiService.kt (hiện có)
-interface AiService {
-    suspend fun chooseMove(state: GameState, playerId: PlayerId, difficulty: Difficulty): Move
-}
-
+@Serializable
 enum class Difficulty(val topK: Int, val temperature: Double) {
     EASY(5, 0.9),
     MEDIUM(3, 0.35),
     HARD(1, 0.0),
+}
+
+interface AiService {
+    suspend fun chooseMove(state: GameState, playerId: PlayerId, difficulty: Difficulty): Move
 }
 ```
 
@@ -115,12 +121,65 @@ enum class Difficulty(val topK: Int, val temperature: Double) {
 | `GameEngine.applyMove(state, move)` | Simulate |
 | `Move.Place / Remove / SwapDeadCard` | Action space |
 | `BoardPosition` 10×10, `flatIndex` | Encode board |
+| `ChipSequence(team, positions)` | Locked cells / encoder channel |
 | `lineStatus` / `BoardLines` | Threat / open-4 |
 | `WinDetector` / `SequenceDetector` | Terminal / tactical |
+| `Player(id, name, team, isAi)` | `PlayerId = String`; flag AI |
+| `GameState` (`@Serializable`) | Gửi qua HTTP / self-play export |
 
-### 2.4 Lưu ý Phase 0 (nên kiểm tra khi học)
+### 2.4 HTTP API & model DTO (đã có trên BE)
 
-Trong `GameEngine.applyPlace` hiện có dòng lấy `state.players.first()` thay vì `move.playerId`. `Remove`/`Swap` thì đúng `move.playerId`. Trước khi chạy search sâu, **nên sửa** thành:
+Package `core/.../model/`:
+
+| File | Vai trò |
+|------|---------|
+| `AiMoveRequest` | `gameState` + `playerId` + `difficulty` (default EASY) |
+| `AiMoveResponse` | wrap `move: Move` (nên dùng khi respond) |
+| `NewGameRequest` | `playerCount`, `teamCount`, `seed` |
+| `ErrorResponse` | `code: ErrorCodes`, `message`, `details?` |
+
+`ErrorCodes` hiện có: `PROTOCOL_VERSION_MISMATCH`, `INTERNAL_ERROR`, **`INVALID_REQUEST`**.
+
+Server routes (`server/.../route/`):
+
+| Method | Path | Hành vi hiện tại |
+|--------|------|------------------|
+| `POST` | `/game/new` | `GameConfig.forPlayer` → tạo `Player(id="p$i", …, isAi=true)` → `GameEngine.initialize` → `201` + `GameState` |
+| `POST` | `/ai/move` | `receive<AiMoveRequest>` → `HeuristicEvaluator().chooseMove(...)` → `200` + **body là `Move` thô** |
+
+Điểm cần nhớ khi học / refactor:
+
+1. **Mỗi request đang `new HeuristicEvaluator()`** — sau Phase 1 hãy inject **một** `AiFacadeService` (singleton / DI) vào `aiRoute`.
+2. Có `AiMoveResponse` nhưng route đang `respond(move)` — nên thống nhất:
+
+```kotlin
+call.respond(HttpStatusCode.OK, AiMoveResponse(move))
+```
+
+3. `GameState` đã `@Serializable` → client có thể round-trip state qua JSON (`ProtocolJson`) rất thuận cho arena HTTP và self-play dump.
+4. `/game/new` hiện gán **mọi** player `isAi = true` (tiện test BE); client thật có thể trộn human/AI sau.
+
+Ví dụ gọi nhanh (sau `./gradlew :server:run`, port `8080`):
+
+```http
+POST /game/new
+Content-Type: application/json
+
+{ "playerCount": 2, "teamCount": 2, "seed": 42 }
+
+POST /ai/move
+Content-Type: application/json
+
+{
+  "gameState": { /* full GameState từ /game/new */ },
+  "playerId": "p0",
+  "difficulty": "HARD"
+}
+```
+
+### 2.5 Lưu ý Phase 0 (nên kiểm tra khi học) — **vẫn còn trong code**
+
+Trong `GameEngine.applyPlace` hiện vẫn lấy `state.players.first()` thay vì `move.playerId`. `Remove`/`Swap` thì đúng `move.playerId`. Trước khi chạy search sâu, **nên sửa** thành:
 
 ```kotlin
 val player = state.players.first { it.id == move.playerId }
@@ -132,15 +191,22 @@ Ngoài ra `Deck.twoShuffleDeck` gọi `pool.shuffled(Random(seed))` nhưng **kh�
 return Deck((Cards.fullDeck + Cards.fullDeck).shuffled(Random(seed)))
 ```
 
-Đây là nền deterministic cần cho MCTS/self-play.
+Đây là nền deterministic cần cho MCTS/self-play / seed của `/game/new`.
 
 ---
 
 ## 3. Kiến trúc đích
 
+Hai lối vào cùng một lõi (tránh fork logic):
+
 ```
-UI
- └─ AiFacadeService  (implements AiService)
+[Compose UI / client]          [HTTP client]
+        │                            │
+        │                     POST /ai/move
+        │                            │
+        └──────────┬─────────────────┘
+                   ▼
+            AiFacadeService  (implements AiService)
        ├─ DifficultyConfig          // budget, temperature, evalMode
        ├─ TacticalEngine            // forced / near-forced → return sớm
        └─ SearchEngine              // root-parallel MCTS / ISMCTS
@@ -148,9 +214,11 @@ UI
               ├─ policy prior  ← EvaluationEngine
               └─ leaf value    ← EvaluationEngine
                                    ├─ HeuristicModel
-                                   └─ NeuralModel → ONNX Runtime
+                                   └─ NeuralModel → ONNX Runtime (ưu tiên JVM server + mobile)
                                          └─ fallback Heuristic
 ```
+
+**Hiện tại:** `/ai/move` gọi thẳng `HeuristicEvaluator` (bỏ qua Facade — đúng baseline; bạn thay khi làm Phase 1).
 
 **Difficulty không phải engine ngang hàng** — chỉ là config truyền vào Tactical + Search.
 
@@ -160,6 +228,8 @@ UI
 
 - `value(state) ∈ [-1, 1]`
 - `priors(state, legalMoves)` — dùng trong PUCT
+
+**Gợi ý vận hành:** search nặng (HARD + nhiều sim / ONNX) chạy trên **server JVM**; client Wasm/JS gọi HTTP hoặc fallback heuristic local.
 
 ---
 
@@ -210,6 +280,17 @@ core/src/iosMain/.../inference/OnnxNeuralInference.ios.kt
 core/src/jsMain/.../inference/UnsupportedNeuralInference.js.kt
 core/src/wasmJsMain/.../inference/UnsupportedNeuralInference.wasm.kt
 
+# Đã có — DTO + HTTP (đừng nhân bản contract)
+core/src/commonMain/kotlin/.../model/
+  AiMoveRequest.kt
+  AiMoveResponse.kt
+  NewGameRequest.kt
+  ErrorResponse.kt
+
+server/src/main/kotlin/.../route/
+  AiRoute.kt      # POST /ai/move  → inject AiService (Phase 1+)
+  GameRoute.kt    # POST /game/new
+
 # Train offline (repo con hoặc thư mục riêng)
 ml/
   train/
@@ -221,7 +302,7 @@ ml/
     encoder_spec.json
 ```
 
-Package gốc giữ nguyên:
+Package AI giữ nguyên:
 
 `com.karasuma.fivelinks.fivelinks_cmp.ai`
 
@@ -240,6 +321,8 @@ Engine đủ deterministic + có cách đo sức mạnh AI trước khi viết s
 - [ ] `applyMove` → validation → place/remove/swap → draw → sequence → win → `advanceTurn`
 - [ ] `legalMoves` khớp validator
 - [ ] State là data class immutable (copy) — thuận lợi cho tree search
+- [ ] `GameState` (và `Move`, `Player`, …) `@Serializable` — đã có; verify round-trip JSON qua `ProtocolJson`
+- [ ] (Optional) smoke test HTTP: `POST /game/new` rồi `POST /ai/move` với `playerId` = `currentPlayer.id`
 
 ### 0.2 Softmax helper dùng chung
 
@@ -290,9 +373,10 @@ class AiArenaTest {
         var winsBlue = 0
         repeat(20) { gameIndex ->
             val config = GameConfig.soloVsAi(seed = 1000L + gameIndex)
+            // PlayerId = String; khớp kiểu /game/new dùng id "p0", "p1", ...
             val players = listOf(
-                Player(PlayerId("P0"), "Human", Team.RED),
-                Player(PlayerId("P1"), "AI", Team.BLUE),
+                Player(id = "p0", name = "Human", team = Team.RED, isAi = false),
+                Player(id = "p1", name = "AI", team = Team.BLUE, isAi = true),
             )
             var state = GameEngine.initialize(config, players)
             var guard = 0
@@ -315,12 +399,17 @@ class AiArenaTest {
 }
 ```
 
-Điều chỉnh `Player` constructor cho đúng signature trong repo của bạn.
+### 0.4 Arena qua HTTP (optional, sau khi server chạy)
+
+1. `POST /game/new` với seed cố định → lưu `GameState`.
+2. Loop: `POST /ai/move` với `playerId = state.currentPlayer.id` → áp `move` bằng `GameEngine.applyMove` (client hoặc test JVM).
+3. So sánh winrate với arena in-process — phải gần nhau nếu cùng seed + cùng AI (sau khi đã fix shuffle deck).
 
 ### Done Phase 0
 
 - Arena chạy được với `HeuristicEvaluator`
 - Ghi lại baseline (winrate / số ván hòa / độ dài ván trung bình)
+- (Khuyến nghị) đã xác nhận `/ai/move` trả nước hợp lệ trên state từ `/game/new`
 
 ---
 
@@ -328,7 +417,7 @@ class AiArenaTest {
 
 ### Mục tiêu
 
-UI / caller chỉ biết `AiService`; bên trong chuyển dần sang tactical + search mà **không đổi chữ ký**.
+Caller (UI **và** `POST /ai/move`) chỉ biết `AiService`; bên trong chuyển dần sang tactical + search mà **không đổi chữ ký**.
 
 ### 1.1 `DifficultyConfig.kt`
 
@@ -429,11 +518,45 @@ class AiFacadeService(
 }
 ```
 
-### 1.3 Cách gắn vào app (khi bạn sẵn sàng)
+### 1.3 Cách gắn vào app / server (khi bạn sẵn sàng)
 
-Chỗ đang tạo `HeuristicEvaluator()` → đổi thành `AiFacadeService()`.
+**In-process (Compose / test):** chỗ đang tạo `HeuristicEvaluator()` → đổi thành `AiFacadeService()`.
 
-Vẫn implement `AiService` → không đụng UI protocol.
+**HTTP (`AiRoute.kt` hiện tại):**
+
+```kotlin
+fun Route.aiRoute(ai: AiService = AiFacadeService()) {
+    route("/ai") {
+        post("/move") {
+            val request = call.receive<AiMoveRequest>()
+            val move = runCatching {
+                ai.chooseMove(request.gameState, request.playerId, request.difficulty)
+            }.getOrElse {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorResponse(ErrorCodes.INVALID_REQUEST, "Invalid request: ${it.message}")
+                )
+                return@post
+            }
+            // Nên wrap DTO (đã có sẵn trong model/)
+            call.respond(HttpStatusCode.OK, AiMoveResponse(move))
+        }
+    }
+}
+```
+
+Trong `Application.module()`:
+
+```kotlin
+val aiService: AiService = AiFacadeService() // một instance dùng lại
+routing {
+    aiRoute(aiService)
+    gameRoute()
+    // ...
+}
+```
+
+Vẫn implement `AiService` → client HTTP không cần biết bên trong là heuristic hay MCTS.
 
 ### Done Phase 1
 
@@ -1124,6 +1247,7 @@ class StateEncoder(
         for (seq in state.completedSequence) {
             for (p in seq.positions) out[idx(4, p.row, p.column)] = 1f
         }
+        // ChipSequence = data class (team, positions) — đã khớp domain hiện tại
         // channels 5+ : hand / meta — tự thiết kế và ghi spec
         return out
     }
@@ -1264,7 +1388,13 @@ Chỉ thay model production khi arena vs baseline MCTS-heuristic **thắng rõ**
 
 ### Mục tiêu
 
-Inference trên Android/JVM/iOS; Web fallback heuristic.
+Inference trên Android / JVM / iOS; Web fallback heuristic **hoặc** gọi `POST /ai/move` (server JVM chạy ORT).
+
+Với BE đã có `/ai/move`, đường đi thực dụng nhất:
+
+1. **Ưu tiên:** ORT trên **server JVM** + client (kể cả Wasm) gửi state lên HTTP.  
+2. **Song song:** ORT trên Android/iOS khi chơi offline.  
+3. **Wasm/JS local:** `createNeuralInferenceOrNull() = null` → heuristic, hoặc không chạy AI local.
 
 ### 7.1 Common expect API
 
@@ -1373,8 +1503,10 @@ Difficulty.EASY -> ... HeuristicOnly  // nhanh, đỡ tốn pin
 ### Done Phase 7
 
 - [ ] Android (hoặc JVM) chạy được hybrid
-- [ ] Web không crash — null inference → heuristic
+- [ ] **Server** `/ai/move` dùng cùng `AiFacadeService` + hybrid (không `new HeuristicEvaluator()` mỗi request)
+- [ ] Web không crash — null inference local → heuristic **hoặc** ủy quyền HTTP
 - [ ] Timeout / exception → fallback
+- [ ] Response thống nhất `AiMoveResponse` (nếu client đã migrate)
 
 ---
 
@@ -1447,11 +1579,13 @@ Không bắt buộc expose ra UI production.
 
 ## 15. Checklist Definition of Done
 
-- [ ] UI chỉ gọi `AiService` / `AiFacadeService`
+- [ ] UI / HTTP chỉ gọi `AiService` / `AiFacadeService` (không new heuristic trong route)
 - [ ] EASY < MEDIUM < HARD (đo arena)
 - [ ] HARD dùng search; tactical bắt forced win/block
 - [ ] Heuristic luôn fallback an toàn
-- [ ] Neural+ONNX trên ≥ Android hoặc JVM; Web không regress
+- [ ] Neural+ONNX trên ≥ Android hoặc JVM server; Web không regress (local fallback hoặc HTTP)
+- [ ] `/ai/move` + `/game/new` smoke test ổn với AI mới
+- [ ] Response AI thống nhất (`AiMoveResponse` khuyến nghị)
 - [ ] `encoder_version` khớp model
 - [ ] Promote model có số liệu
 - [ ] Domain public API không phá vỡ không cần thiết
@@ -1476,9 +1610,12 @@ a_t = \arg\max_a \left( Q(s,a) + c_{\mathrm{puct}}\, P(s,a)\, \frac{\sqrt{N(s)}}
 Phase 0  [ ] fix applyPlace / shuffle deck (nếu cần)
          [ ] SoftmaxPicker
          [ ] AiArenaTest baseline
+         [ ] (optional) HTTP smoke /game/new + /ai/move
 
 Phase 1  [ ] DifficultyConfig
          [ ] AiFacadeService → heuristic
+         [ ] Wire AiRoute(aiService) + AiMoveResponse
+         [ ] Application giữ 1 instance AiService
 
 Phase 2  [ ] ThreatDetector
          [ ] TacticalEngine
@@ -1531,9 +1668,15 @@ Phase 9  [ ] regression suite
 |---------|---------------------|
 | `HeuristicEvaluator.score` | policy prior + tactical tie-break + baseline |
 | `HeuristicWeights` | giữ / tune; NN không thay thế ngay |
-| `Difficulty` enum | map → `DifficultyConfig` |
+| `Difficulty` enum (`@Serializable`) | map → `DifficultyConfig`; field trong `AiMoveRequest` |
 | `GameEngine.legalMoves/applyMove` | xương sống MCTS |
 | `BoardLines` / `lineStatus` | ThreatDetector |
+| `ChipSequence(team, positions)` | locked channel trong encoder; check remove jack |
+| `GameState` `@Serializable` | HTTP body + self-play dump JSON |
+| `Player.isAi` / `PlayerId = String` | phân biệt bot; id kiểu `"p0"` như `GameRoute` |
+| `AiMoveRequest` / `AiMoveResponse` | contract HTTP — đừng tạo DTO song song |
+| `POST /ai/move`, `POST /game/new` | entry server; inject Facade ở Phase 1 |
+| `ErrorCodes.INVALID_REQUEST` | lỗi body / chooseMove fail |
 
 ### E. Gợi ý học từng bước nhỏ
 
@@ -1548,7 +1691,17 @@ Phase 9  [ ] regression suite
 
 Hãy coi **Phase 3** là đích gần: bot đã “biết nghĩ”. Phase 6–7 là lớp AlphaZero tối giản khi bạn đã có harness và encoder ổn định.
 
+Với BE hiện tại: mỗi lần nâng `AiService`, nhớ wire lại **`AiRoute`** (một instance) để HTTP và in-process cùng một bộ não.
+
 Khi implement, giữ guide này cạnh PR/commit nhỏ theo từng phase; mỗi phase một milestone có arena số liệu — đó là cách học chắc và tránh rewrite lớn.
 
 Chúc bạn triển khai vui và “xịn” dần theo đúng nhịp học tập.
-```
+
+---
+
+## 17. Changelog guide
+
+| Ngày | Thay đổi |
+|------|----------|
+| 20/07/2026 | Bản đầu: Phase 0–9, kiến trúc Facade → Tactical → ISMCTS → Eval → ONNX |
+| 23/07/2026 | Đồng bộ code BE mới: `model/*`, `POST /game/new`, `POST /ai/move`, `GameState`/`Difficulty` serializable, `Player.isAi`, `ChipSequence`, `ErrorCodes.INVALID_REQUEST`; cập nhật kiến trúc dual-entry (UI + HTTP); sửa mẫu arena `Player`; Phase 1/7/DoD gắn `AiRoute` + `AiMoveResponse`; nhắc bug Phase 0 vẫn còn |
