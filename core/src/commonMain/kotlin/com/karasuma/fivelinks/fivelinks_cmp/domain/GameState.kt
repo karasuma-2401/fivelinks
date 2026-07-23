@@ -1,5 +1,8 @@
 package com.karasuma.fivelinks.fivelinks_cmp.domain
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class GameState(
     val schemaVersion: Int = SCHEMA_VERSION,
     val config: GameConfig,

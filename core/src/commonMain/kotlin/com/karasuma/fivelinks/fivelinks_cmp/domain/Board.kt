@@ -54,7 +54,7 @@ data class Board (val cells: List<Cell>) {
     operator fun get(position: BoardPosition): Cell = cells[position.flatIndex]
 
     // return card in position
-    fun cardAt(position: BoardPosition): Card = (cells[position.flatIndex] as Cell.Slot).card
+    fun cardAt(position: BoardPosition): Card? = (cells[position.flatIndex] as? Cell.Slot)?.card
 
     fun isCorner(position: BoardPosition): Boolean = cells[position.flatIndex] is Cell.Corner
 
