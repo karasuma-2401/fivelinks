@@ -10,7 +10,6 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.domain.isTwoEyedJack
 import com.karasuma.fivelinks.fivelinks_cmp.domain.lineStatus
 import kotlin.math.abs
-import kotlin.math.exp
 import kotlin.random.Random
 
 class HeuristicEvaluator (
@@ -29,7 +28,7 @@ class HeuristicEvaluator (
 
         return when (difficulty) {
             Difficulty.HARD -> sorted.first().first
-            Difficulty.MEDIUM, Difficulty.EASY -> softmaxPick(sorted.take(difficulty.topK), difficulty.temperature)
+            Difficulty.MEDIUM, Difficulty.EASY -> SoftmaxPicker.pick(sorted.take(difficulty.topK), difficulty.temperature)
         }
     }
 
@@ -82,20 +81,6 @@ class HeuristicEvaluator (
         return score
     }
 
-    private fun softmaxPick(pool: List<Pair<Move, Double>>, temperature: Double): Move {
-        if (pool.isEmpty()) error("empty pool")
-        if (pool.size == 1 || temperature <= 0.0) return pool.first().first
-        val maxScore = pool.maxOf { it.second }
-        val weights = pool.map { exp((it.second - maxScore) / (1_000.0 * temperature)) }
-        val total = weights.sum()
-        val r = random.nextDouble() * total
-        var acc = 0.0
-        for ((i, w) in weights.withIndex()) {
-            acc += w
-            if (r <= acc) return pool[i].first
-        }
-        return pool.last().first
-    }
 
     private fun countOpenFours(state: GameState, team: Team): Int {
         var count = 0

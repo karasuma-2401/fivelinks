@@ -47,7 +47,7 @@ object GameEngine {
     }
 
     fun applyPlace(state: GameState, move: Move.Place): GameState {
-        val player = state.players.first()
+        val player = state.players.first { it.id == move.playerId }
         val chipsAfter = state.chips.place(move.position, player.team)
         val handAfter = state.handOf(player).without(move.card)
         val (card, deck) = state.deck.draw()
@@ -102,7 +102,7 @@ object GameEngine {
 
     fun legalMoves(state: GameState, playerId: PlayerId): List<Move> {
         if (state.winner != null) return emptyList()
-        val player = state.players.first { it.id == playerId } ?: return emptyList()
+        val player = state.players.firstOrNull { it.id == playerId } ?: return emptyList()
         if (state.currentPlayer.id != playerId) return emptyList()
 
         val moves = mutableListOf<Move>()
@@ -118,7 +118,7 @@ object GameEngine {
                 }
                 card.isOneEyedJack() -> {
                     for (pos in BoardPosition.all) {
-                        val chip = state.chips.at(pos)
+                        val chip = state.chips.at(pos) ?: continue
                         if (chip == player.team) continue
                         if (state.completedSequence.any { pos in it.positions }) continue
 

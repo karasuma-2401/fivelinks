@@ -3,7 +3,8 @@
 > Dự án: **fivelinks-cmp**  
 > Mục đích: hướng dẫn **tự tay triển khai** từ đầu đến cuối (AlphaZero tối giản: Tactical → ISMCTS → Heuristic/Neural + ONNX).  
 > Tài liệu này **không thay thế** source hiện tại — bạn thêm/sửa code theo từng phase khi học.  
-> Cập nhật: 20/07/2026
+> Cập nhật: 23/07/2026 (Phase 2 tests)  
+> Đồng bộ với: BE HTTP (`/game/new`, `/ai/move`), Facade + Tactical, `GameState` `@Serializable`, package `model/`
 
 ---
 
@@ -25,6 +26,7 @@
 14. [Phase 9 — Tests, arena, docs](#phase-9--tests-arena-docs)
 15. [Checklist Definition of Done](#15-checklist-definition-of-done)
 16. [Phụ lục](#16-phụ-lục)
+17. [Changelog guide](#17-changelog-guide)
 
 ---
 
@@ -36,12 +38,13 @@ Bot AI cho game kiểu **Sequence / Five Links**:
 
 | Lớp | Vai trò |
 |-----|---------|
-| **AiFacadeService** | UI chỉ gọi 1 API (`AiService`) |
+| **AiFacadeService** | Caller (UI **hoặc** HTTP route) chỉ gọi 1 API (`AiService`) |
 | **DifficultyConfig** | Budget sim / time / temperature / mode |
 | **TacticalEngine** | Nước forced (win ngay, chặn open-4) |
 | **SearchEngine** | MCTS trên thế giới đã determinize (bài ẩn) |
 | **EvaluationEngine** | Value + policy prior (Heuristic và/hoặc Neural) |
-| **ONNX Runtime** | Inference model nhẹ trên Android / iOS / JVM |
+| **ONNX Runtime** | Inference model nhẹ trên Android / iOS / **JVM server** |
+| **HTTP `/ai/move`** | (đã có) Client gửi `GameState` lên server nhờ bot chọn nước |
 
 ### 1.2 Vì sao không copy AlphaZero “thuần”?
 
@@ -82,23 +85,39 @@ Game có:
 
 ```
 core/src/commonMain/kotlin/.../ai/
-  AiService.kt           # interface + enum Difficulty
-  HeuristicEvaluator.kt  # 1-ply greedy + softmax
-  HeuristicWeights.kt    # trọng số tay
+  AiService.kt
+  HeuristicEvaluator.kt / HeuristicWeights.kt
+  SoftmaxPicker.kt
+  DifficultyConfig.kt          # Phase 1 ✅
+  AiFacadeService.kt           # Phase 1 ✅ (wire tactical)
+  tactical/
+    ThreatDetector.kt          # Phase 2 ✅
+    TacticalEngine.kt          # Phase 2 ✅  (API: findForceMove)
+
+core/src/commonTest/kotlin/.../
+  domain/Phase0DomainTest.kt
+  ai/AiArenaTest.kt            # Phase 0.3 ✅
+  ai/tactical/TacticalEngineTest.kt  # Phase 2 ✅
+
+server/.../AiHttpArenaTest.kt  # Phase 0.4 ✅
 ```
 
-### 2.2 Contract hiện tại
+**Đã xong Phase 0–2** (domain harden + Facade + Tactical + tests).  
+**Chưa có:** Search/MCTS, EvaluationEngine, Encoder, Neural/ONNX.
+
+### 2.2 Contract `AiService` hiện tại
 
 ```kotlin
 // AiService.kt (hiện có)
-interface AiService {
-    suspend fun chooseMove(state: GameState, playerId: PlayerId, difficulty: Difficulty): Move
-}
-
+@Serializable
 enum class Difficulty(val topK: Int, val temperature: Double) {
     EASY(5, 0.9),
     MEDIUM(3, 0.35),
     HARD(1, 0.0),
+}
+
+interface AiService {
+    suspend fun chooseMove(state: GameState, playerId: PlayerId, difficulty: Difficulty): Move
 }
 ```
 
@@ -115,32 +134,84 @@ enum class Difficulty(val topK: Int, val temperature: Double) {
 | `GameEngine.applyMove(state, move)` | Simulate |
 | `Move.Place / Remove / SwapDeadCard` | Action space |
 | `BoardPosition` 10×10, `flatIndex` | Encode board |
+| `ChipSequence(team, positions)` | Locked cells / encoder channel |
 | `lineStatus` / `BoardLines` | Threat / open-4 |
 | `WinDetector` / `SequenceDetector` | Terminal / tactical |
+| `Player(id, name, team, isAi)` | `PlayerId = String`; flag AI |
+| `GameState` (`@Serializable`) | Gửi qua HTTP / self-play export |
 
-### 2.4 Lưu ý Phase 0 (nên kiểm tra khi học)
+### 2.4 HTTP API & model DTO (đã có trên BE)
 
-Trong `GameEngine.applyPlace` hiện có dòng lấy `state.players.first()` thay vì `move.playerId`. `Remove`/`Swap` thì đúng `move.playerId`. Trước khi chạy search sâu, **nên sửa** thành:
+Package `core/.../model/`:
+
+| File | Vai trò |
+|------|---------|
+| `AiMoveRequest` | `gameState` + `playerId` + `difficulty` (default EASY) |
+| `AiMoveResponse` | wrap `move: Move` (nên dùng khi respond) |
+| `NewGameRequest` | `playerCount`, `teamCount`, `seed` |
+| `ErrorResponse` | `code: ErrorCodes`, `message`, `details?` |
+
+`ErrorCodes` hiện có: `PROTOCOL_VERSION_MISMATCH`, `INTERNAL_ERROR`, **`INVALID_REQUEST`**.
+
+Server routes (`server/.../route/`):
+
+| Method | Path | Hành vi hiện tại |
+|--------|------|------------------|
+| `POST` | `/game/new` | `GameConfig.forPlayer` → tạo `Player(id="p$i", …, isAi=true)` → `GameEngine.initialize` → `201` + `GameState` |
+| `POST` | `/ai/move` | `receive<AiMoveRequest>` → `HeuristicEvaluator().chooseMove(...)` → `200` + **body là `Move` thô** |
+
+Điểm cần nhớ khi học / refactor:
+
+1. **Mỗi request đang `new HeuristicEvaluator()`** — sau Phase 1 hãy inject **một** `AiFacadeService` (singleton / DI) vào `aiRoute`.
+2. Có `AiMoveResponse` nhưng route đang `respond(move)` — nên thống nhất:
 
 ```kotlin
-val player = state.players.first { it.id == move.playerId }
+call.respond(HttpStatusCode.OK, AiMoveResponse(move))
 ```
 
-Ngoài ra `Deck.twoShuffleDeck` gọi `pool.shuffled(Random(seed))` nhưng **không gán lại** kết quả shuffle — nên:
+3. `GameState` đã `@Serializable` → client có thể round-trip state qua JSON (`ProtocolJson`) rất thuận cho arena HTTP và self-play dump.
+4. `/game/new` hiện gán **mọi** player `isAi = true` (tiện test BE); client thật có thể trộn human/AI sau.
 
-```kotlin
-return Deck((Cards.fullDeck + Cards.fullDeck).shuffled(Random(seed)))
+Ví dụ gọi nhanh (sau `./gradlew :server:run`, port `8080`):
+
+```http
+POST /game/new
+Content-Type: application/json
+
+{ "playerCount": 2, "teamCount": 2, "seed": 42 }
+
+POST /ai/move
+Content-Type: application/json
+
+{
+  "gameState": { /* full GameState từ /game/new */ },
+  "playerId": "p0",
+  "difficulty": "HARD"
+}
 ```
 
-Đây là nền deterministic cần cho MCTS/self-play.
+### 2.5 Phase 0 domain — **đã sửa trong repo**
 
+| Mục | Trạng thái |
+|-----|------------|
+| `applyPlace` dùng `move.playerId` | ✅ |
+| `twoShuffleDeck` gán kết quả `shuffled(Random(seed))` | ✅ |
+| `legalMoves` Remove bỏ ô trống | ✅ |
+| Tests | `EngineTest`, `AiArenaTest`, `AiHttpArenaTest` |
 ---
 
 ## 3. Kiến trúc đích
 
+Hai lối vào cùng một lõi (tránh fork logic):
+
 ```
-UI
- └─ AiFacadeService  (implements AiService)
+[Compose UI / client]          [HTTP client]
+        │                            │
+        │                     POST /ai/move
+        │                            │
+        └──────────┬─────────────────┘
+                   ▼
+            AiFacadeService  (implements AiService)
        ├─ DifficultyConfig          // budget, temperature, evalMode
        ├─ TacticalEngine            // forced / near-forced → return sớm
        └─ SearchEngine              // root-parallel MCTS / ISMCTS
@@ -148,9 +219,11 @@ UI
               ├─ policy prior  ← EvaluationEngine
               └─ leaf value    ← EvaluationEngine
                                    ├─ HeuristicModel
-                                   └─ NeuralModel → ONNX Runtime
+                                   └─ NeuralModel → ONNX Runtime (ưu tiên JVM server + mobile)
                                          └─ fallback Heuristic
 ```
+
+**Hiện tại:** `/ai/move` inject **`AiFacadeService`** (tactical → heuristic). Search/MCTS chưa có (Phase 3).
 
 **Difficulty không phải engine ngang hàng** — chỉ là config truyền vào Tactical + Search.
 
@@ -160,6 +233,8 @@ UI
 
 - `value(state) ∈ [-1, 1]`
 - `priors(state, legalMoves)` — dùng trong PUCT
+
+**Gợi ý vận hành:** search nặng (HARD + nhiều sim / ONNX) chạy trên **server JVM**; client Wasm/JS gọi HTTP hoặc fallback heuristic local.
 
 ---
 
@@ -173,12 +248,13 @@ core/src/commonMain/kotlin/.../ai/
   HeuristicEvaluator.kt        # giữ làm baseline
   HeuristicWeights.kt
 
-  AiFacadeService.kt           # Phase 1
-  DifficultyConfig.kt          # Phase 1
+  AiFacadeService.kt           # Phase 1 ✅
+  DifficultyConfig.kt          # Phase 1 ✅
+  SoftmaxPicker.kt
 
   tactical/
-    TacticalEngine.kt          # Phase 2
-    ThreatDetector.kt          # Phase 2 (extract từ heuristic)
+    TacticalEngine.kt          # Phase 2 ✅  findForceMove
+    ThreatDetector.kt          # Phase 2 ✅
 
   search/
     SearchEngine.kt            # Phase 3
@@ -210,6 +286,17 @@ core/src/iosMain/.../inference/OnnxNeuralInference.ios.kt
 core/src/jsMain/.../inference/UnsupportedNeuralInference.js.kt
 core/src/wasmJsMain/.../inference/UnsupportedNeuralInference.wasm.kt
 
+# Đã có — DTO + HTTP (đừng nhân bản contract)
+core/src/commonMain/kotlin/.../model/
+  AiMoveRequest.kt
+  AiMoveResponse.kt
+  NewGameRequest.kt
+  ErrorResponse.kt
+
+server/src/main/kotlin/.../route/
+  AiRoute.kt      # POST /ai/move  → inject AiService (Phase 1+)
+  GameRoute.kt    # POST /game/new
+
 # Train offline (repo con hoặc thư mục riêng)
 ml/
   train/
@@ -221,7 +308,7 @@ ml/
     encoder_spec.json
 ```
 
-Package gốc giữ nguyên:
+Package AI giữ nguyên:
 
 `com.karasuma.fivelinks.fivelinks_cmp.ai`
 
@@ -235,11 +322,13 @@ Engine đủ deterministic + có cách đo sức mạnh AI trước khi viết s
 
 ### 0.1 Checklist domain
 
-- [ ] `applyPlace` dùng `move.playerId`
-- [ ] `twoShuffleDeck` thật sự shuffle theo seed
-- [ ] `applyMove` → validation → place/remove/swap → draw → sequence → win → `advanceTurn`
-- [ ] `legalMoves` khớp validator
-- [ ] State là data class immutable (copy) — thuận lợi cho tree search
+- [x] `applyPlace` dùng `move.playerId`
+- [x] `twoShuffleDeck` thật sự shuffle theo seed
+- [x] `applyMove` → validation → place/remove/swap → draw → sequence → win → `advanceTurn`
+- [x] `legalMoves` khớp validator (Remove không target ô trống)
+- [x] State là data class immutable (copy) — thuận lợi cho tree search
+- [x] `GameState` round-trip JSON qua `ProtocolJson` (`EngineTest`)
+- [x] HTTP arena: `AiHttpArenaTest` (in-process vs `/game/new` + `/ai/move`)
 
 ### 0.2 Softmax helper dùng chung
 
@@ -290,9 +379,10 @@ class AiArenaTest {
         var winsBlue = 0
         repeat(20) { gameIndex ->
             val config = GameConfig.soloVsAi(seed = 1000L + gameIndex)
+            // PlayerId = String; khớp kiểu /game/new dùng id "p0", "p1", ...
             val players = listOf(
-                Player(PlayerId("P0"), "Human", Team.RED),
-                Player(PlayerId("P1"), "AI", Team.BLUE),
+                Player(id = "p0", name = "Human", team = Team.RED, isAi = false),
+                Player(id = "p1", name = "AI", team = Team.BLUE, isAi = true),
             )
             var state = GameEngine.initialize(config, players)
             var guard = 0
@@ -315,12 +405,17 @@ class AiArenaTest {
 }
 ```
 
-Điều chỉnh `Player` constructor cho đúng signature trong repo của bạn.
+### 0.4 Arena qua HTTP (optional, sau khi server chạy)
+
+1. `POST /game/new` với seed cố định → lưu `GameState`.
+2. Loop: `POST /ai/move` với `playerId = state.currentPlayer.id` → áp `move` bằng `GameEngine.applyMove` (client hoặc test JVM).
+3. So sánh winrate với arena in-process — phải gần nhau nếu cùng seed + cùng AI (sau khi đã fix shuffle deck).
 
 ### Done Phase 0
 
 - Arena chạy được với `HeuristicEvaluator`
 - Ghi lại baseline (winrate / số ván hòa / độ dài ván trung bình)
+- (Khuyến nghị) đã xác nhận `/ai/move` trả nước hợp lệ trên state từ `/game/new`
 
 ---
 
@@ -328,7 +423,7 @@ class AiArenaTest {
 
 ### Mục tiêu
 
-UI / caller chỉ biết `AiService`; bên trong chuyển dần sang tactical + search mà **không đổi chữ ký**.
+Caller (UI **và** `POST /ai/move`) chỉ biết `AiService`; bên trong chuyển dần sang tactical + search mà **không đổi chữ ký**.
 
 ### 1.1 `DifficultyConfig.kt`
 
@@ -429,11 +524,45 @@ class AiFacadeService(
 }
 ```
 
-### 1.3 Cách gắn vào app (khi bạn sẵn sàng)
+### 1.3 Cách gắn vào app / server (khi bạn sẵn sàng)
 
-Chỗ đang tạo `HeuristicEvaluator()` → đổi thành `AiFacadeService()`.
+**In-process (Compose / test):** chỗ đang tạo `HeuristicEvaluator()` → đổi thành `AiFacadeService()`.
 
-Vẫn implement `AiService` → không đụng UI protocol.
+**HTTP (`AiRoute.kt` hiện tại):**
+
+```kotlin
+fun Route.aiRoute(ai: AiService = AiFacadeService()) {
+    route("/ai") {
+        post("/move") {
+            val request = call.receive<AiMoveRequest>()
+            val move = runCatching {
+                ai.chooseMove(request.gameState, request.playerId, request.difficulty)
+            }.getOrElse {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorResponse(ErrorCodes.INVALID_REQUEST, "Invalid request: ${it.message}")
+                )
+                return@post
+            }
+            // Nên wrap DTO (đã có sẵn trong model/)
+            call.respond(HttpStatusCode.OK, AiMoveResponse(move))
+        }
+    }
+}
+```
+
+Trong `Application.module()`:
+
+```kotlin
+val aiService: AiService = AiFacadeService() // một instance dùng lại
+routing {
+    aiRoute(aiService)
+    gameRoute()
+    // ...
+}
+```
+
+Vẫn implement `AiService` → client HTTP không cần biết bên trong là heuristic hay MCTS.
 
 ### Done Phase 1
 
@@ -448,155 +577,71 @@ Vẫn implement `AiService` → không đụng UI protocol.
 
 Trả lời ngay các nước **bắt buộc / gần bắt buộc**, giảm blunder và giảm tải search.
 
-### 2.1 `ThreatDetector.kt`
+### Trạng thái triển khai: ✅ hoàn thành
 
-Extract logic open-4 (hiện `private` trong `HeuristicEvaluator`) ra chỗ dùng chung:
+| File | API thực tế trong repo |
+|------|------------------------|
+| `tactical/ThreatDetector.kt` | `countOpenFours`, `openFoursEmptyCells` |
+| `tactical/TacticalEngine.kt` | `findForceMove`, `orderMoves` |
+| `AiFacadeService` | nếu `useTacticalForced` → `findForceMove` rồi mới heuristic |
+| Tests | `commonTest/.../tactical/TacticalEngineTest.kt` |
 
-```kotlin
-package com.karasuma.fivelinks.fivelinks_cmp.ai.tactical
+> Tên method trong code là **`findForceMove`** / **`openFoursEmptyCells`** (khác nhẹ so với bản nháp guide cũ `findForcedMove` / `openFourEmptyCells`). Khi đọc code, bám tên trong repo.
 
-import com.karasuma.fivelinks.fivelinks_cmp.domain.BoardLines
-import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
-import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
-import com.karasuma.fivelinks.fivelinks_cmp.domain.lineStatus
+### 2.1 `ThreatDetector` (đã có)
 
-object ThreatDetector {
-    fun countOpenFours(state: GameState, team: Team): Int {
-        var count = 0
-        for (line in BoardLines.all) {
-            val s = lineStatus(state, line, team)
-            if (s.openForTeam && s.controlledByTeam == 4 && s.empty == 1) count++
-        }
-        return count
-    }
+Dùng `BoardLines` + `lineStatus` để đếm open-4 và lấy ô trống hoàn thành đe dọa.
 
-    /** Ô trống hoàn thành open-4 của team (nếu có đúng 1 empty trên line). */
-    fun openFourEmptyCells(state: GameState, team: Team): Set<com.karasuma.fivelinks.fivelinks_cmp.domain.BoardPosition> {
-        val cells = mutableSetOf<com.karasuma.fivelinks.fivelinks_cmp.domain.BoardPosition>()
-        for (line in BoardLines.all) {
-            val s = lineStatus(state, line, team)
-            if (s.openForTeam && s.controlledByTeam == 4 && s.empty == 1) {
-                line.firstOrNull { state.chips.at(it) == null && !state.board.isCorner(it) }
-                    ?.let { cells += it }
-            }
-        }
-        return cells
-    }
-}
-```
+### 2.2 `TacticalEngine` — thứ tự ưu tiên (đã có)
 
-Sau đó có thể refactor `HeuristicEvaluator` gọi `ThreatDetector` (tùy bạn — không bắt buộc ngay).
+1. Win ngay (`winner == myTeam` hoặc đủ `sequenceToWin`)  
+2. Chặn open-4 đối thủ (Place vào danger cell, hoặc Remove giảm threat)  
+3. Tạo open-4 của mình  
+4. `null` → Facade fallback heuristic  
 
-### 2.2 `TacticalEngine.kt`
+`dangerCells` gộp bằng:
 
 ```kotlin
-package com.karasuma.fivelinks.fivelinks_cmp.ai.tactical
-
-import com.karasuma.fivelinks.fivelinks_cmp.ai.HeuristicEvaluator
-import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
-import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
-import com.karasuma.fivelinks.fivelinks_cmp.domain.Move
-import com.karasuma.fivelinks.fivelinks_cmp.domain.PlayerId
-
-class TacticalEngine(
-    private val heuristic: HeuristicEvaluator = HeuristicEvaluator(),
-) {
-    /**
-     * Trả về nước forced nếu tìm thấy, theo thứ tự ưu tiên:
-     * 1) Win ngay (tăng completedSequence / winner == myTeam)
-     * 2) Chặn đối thủ sắp hoàn thành open-4 (nếu mình có nước Place/Remove phù hợp)
-     * 3) (Optional) Tạo open-4 nếu không có đe dọa thua ngay
-     */
-    fun findForcedMove(state: GameState, playerId: PlayerId): Move? {
-        val player = state.players.first { it.id == playerId }
-        val myTeam = player.team
-        val moves = GameEngine.legalMoves(state, playerId)
-        if (moves.isEmpty()) return null
-
-        // 1) Winning move
-        for (move in moves) {
-            val after = GameEngine.applyMove(state, move).getOrNull() ?: continue
-            if (after.winner == myTeam) return move
-            if (after.sequencesOf(myTeam) > state.sequencesOf(myTeam) &&
-                after.sequencesOf(myTeam) >= state.config.sequenceToWin
-            ) return move
-        }
-
-        // 2) Block opponent open-four cells if we can occupy/remove
-        val oppTeams = state.config.teams - myTeam
-        val dangerCells = oppTeams.flatMap { ThreatDetector.openFourEmptyCells(state, it) }.toSet()
-        if (dangerCells.isNotEmpty()) {
-            val blockPlace = moves.filterIsInstance<Move.Place>()
-                .filter { it.position in dangerCells }
-            if (blockPlace.isNotEmpty()) {
-                return blockPlace.maxBy { heuristic.score(state, it, playerId) }
-            }
-            // One-eyed jack: remove chip that creates the threat (heuristic score giúp chọn)
-            val removes = moves.filterIsInstance<Move.Remove>()
-            if (removes.isNotEmpty()) {
-                val beforeThreat = oppTeams.sumOf { ThreatDetector.countOpenFours(state, it) }
-                val useful = removes.filter { move ->
-                    val after = GameEngine.applyMove(state, move).getOrNull() ?: return@filter false
-                    val afterThreat = oppTeams.sumOf { ThreatDetector.countOpenFours(after, it) }
-                    afterThreat < beforeThreat
-                }
-                if (useful.isNotEmpty()) {
-                    return useful.maxBy { heuristic.score(state, it, playerId) }
-                }
-            }
-        }
-
-        // 3) Create own open-four (near-forced offense)
-        val creating = moves.filter { move ->
-            val after = GameEngine.applyMove(state, move).getOrNull() ?: return@filter false
-            ThreatDetector.countOpenFours(after, myTeam) >
-                ThreatDetector.countOpenFours(state, myTeam)
-        }
-        if (creating.isNotEmpty()) {
-            return creating.maxBy { heuristic.score(state, it, playerId) }
-        }
-
-        return null
-    }
-
-    /** Gợi ý move ordering cho MCTS (Phase 3). */
-    fun orderMoves(state: GameState, playerId: PlayerId, moves: List<Move>): List<Move> =
-        moves.sortedByDescending { heuristic.score(state, it, playerId) }
-}
+oppTeams.flatMap { ThreatDetector.openFoursEmptyCells(state, it) }.toSet()
 ```
 
-### 2.3 Gắn vào Facade
+### 2.3 Gắn Facade (đã có)
 
 ```kotlin
 if (config.useTacticalForced) {
-    tactical.findForcedMove(state, playerId)?.let { return it }
+    tactical.findForceMove(state, playerId)?.let { return it }
 }
+return heuristic.chooseMove(state, playerId, difficulty)
 ```
 
-### 2.4 Test fixture bắt buộc
+### 2.4 Test fixtures (đã có — học cách dựng state tay)
 
-```kotlin
-@Test
-fun mustCompleteSequenceWhenAvailable() {
-    // Tự dựng GameState: 4 chip liên tiếp + 1 ô trống đúng bài trong tay
-    // assertEquals(expectedPlace, tactical.findForcedMove(state, playerId))
-}
+File: `core/src/commonTest/.../ai/tactical/TacticalEngineTest.kt`
 
-@Test
-fun mustBlockOpponentOpenFour() {
-    // Đối thủ open-4, mình có card đặt vào ô trống đó
-    // assertNotNull(tactical.findForcedMove(...))
-}
+Ý tưởng: **không** chơi random từ `initialize`. Dựng `GameState` với chips + hand cố định.
+
+Fixture chuẩn: line row 0 cols 1..5 (`6D`…`10D`). Dùng **3 đội** (`GameConfig.forPlayer(3, 3, …)`) để `sequenceToWin = 1`.
+
+| Test | Ý nghĩa |
+|------|---------|
+| `mustCompleteSequenceWhenAvailable` | 4 chip RED + hand có bài ô trống → Place thắng |
+| `mustBlockOpponentOpenFour` | 4 chip BLUE open-4 → RED Place đúng danger cell |
+| `facade_usesTacticalForcedMove` | Facade EASY vẫn trả forced win |
+
+Chạy:
+
+```bash
+./gradlew :core:jvmTest --tests "*TacticalEngineTest"
 ```
 
 ### Done Phase 2
 
-- [ ] Win/block fixtures pass
-- [ ] Facade: tactical → heuristic fallback
-- [ ] Cảm giác HARD ít “bỏ qua chặn 4” hơn
+- [x] Win/block fixtures pass  
+- [x] Facade: tactical → heuristic fallback  
+- [x] `ThreatDetector` + `TacticalEngine` trong `commonMain`  
+- [ ] (Sau Phase 3) cảm giác HARD ít bỏ chặn hơn khi có search — tactical đã cover forced  
 
 ---
-
 ## Phase 3 — Search (ISMCTS / root-parallel) + heuristic leaf
 
 ### Mục tiêu
@@ -1124,6 +1169,7 @@ class StateEncoder(
         for (seq in state.completedSequence) {
             for (p in seq.positions) out[idx(4, p.row, p.column)] = 1f
         }
+        // ChipSequence = data class (team, positions) — đã khớp domain hiện tại
         // channels 5+ : hand / meta — tự thiết kế và ghi spec
         return out
     }
@@ -1264,7 +1310,13 @@ Chỉ thay model production khi arena vs baseline MCTS-heuristic **thắng rõ**
 
 ### Mục tiêu
 
-Inference trên Android/JVM/iOS; Web fallback heuristic.
+Inference trên Android / JVM / iOS; Web fallback heuristic **hoặc** gọi `POST /ai/move` (server JVM chạy ORT).
+
+Với BE đã có `/ai/move`, đường đi thực dụng nhất:
+
+1. **Ưu tiên:** ORT trên **server JVM** + client (kể cả Wasm) gửi state lên HTTP.  
+2. **Song song:** ORT trên Android/iOS khi chơi offline.  
+3. **Wasm/JS local:** `createNeuralInferenceOrNull() = null` → heuristic, hoặc không chạy AI local.
 
 ### 7.1 Common expect API
 
@@ -1373,8 +1425,10 @@ Difficulty.EASY -> ... HeuristicOnly  // nhanh, đỡ tốn pin
 ### Done Phase 7
 
 - [ ] Android (hoặc JVM) chạy được hybrid
-- [ ] Web không crash — null inference → heuristic
+- [ ] **Server** `/ai/move` dùng cùng `AiFacadeService` + hybrid (không `new HeuristicEvaluator()` mỗi request)
+- [ ] Web không crash — null inference local → heuristic **hoặc** ủy quyền HTTP
 - [ ] Timeout / exception → fallback
+- [ ] Response thống nhất `AiMoveResponse` (nếu client đã migrate)
 
 ---
 
@@ -1447,11 +1501,13 @@ Không bắt buộc expose ra UI production.
 
 ## 15. Checklist Definition of Done
 
-- [ ] UI chỉ gọi `AiService` / `AiFacadeService`
+- [ ] UI / HTTP chỉ gọi `AiService` / `AiFacadeService` (không new heuristic trong route)
 - [ ] EASY < MEDIUM < HARD (đo arena)
 - [ ] HARD dùng search; tactical bắt forced win/block
 - [ ] Heuristic luôn fallback an toàn
-- [ ] Neural+ONNX trên ≥ Android hoặc JVM; Web không regress
+- [ ] Neural+ONNX trên ≥ Android hoặc JVM server; Web không regress (local fallback hoặc HTTP)
+- [ ] `/ai/move` + `/game/new` smoke test ổn với AI mới
+- [ ] Response AI thống nhất (`AiMoveResponse` khuyến nghị)
 - [ ] `encoder_version` khớp model
 - [ ] Promote model có số liệu
 - [ ] Domain public API không phá vỡ không cần thiết
@@ -1473,17 +1529,20 @@ a_t = \arg\max_a \left( Q(s,a) + c_{\mathrm{puct}}\, P(s,a)\, \frac{\sqrt{N(s)}}
 ### B. Thứ tự implement file (checklist copy)
 
 ```
-Phase 0  [ ] fix applyPlace / shuffle deck (nếu cần)
-         [ ] SoftmaxPicker
-         [ ] AiArenaTest baseline
+Phase 0  [x] fix applyPlace / shuffle deck / legalMoves Remove
+         [x] SoftmaxPicker
+         [x] Phase0DomainTest + AiArenaTest baseline
+         [x] AiHttpArenaTest
 
-Phase 1  [ ] DifficultyConfig
-         [ ] AiFacadeService → heuristic
+Phase 1  [x] DifficultyConfig
+         [x] AiFacadeService → tactical + heuristic
+         [x] Wire AiRoute(aiService)
+         [ ] (optional) unit test DifficultyConfig mapping
 
-Phase 2  [ ] ThreatDetector
-         [ ] TacticalEngine
-         [ ] fixtures must-win/block
-         [ ] Facade gọi tactical
+Phase 2  [x] ThreatDetector
+         [x] TacticalEngine (`findForceMove`)
+         [x] fixtures must-win/block + Facade
+         [x] Facade gọi tactical
 
 Phase 3  [ ] MoveKey
          [ ] Determinizer
@@ -1531,9 +1590,15 @@ Phase 9  [ ] regression suite
 |---------|---------------------|
 | `HeuristicEvaluator.score` | policy prior + tactical tie-break + baseline |
 | `HeuristicWeights` | giữ / tune; NN không thay thế ngay |
-| `Difficulty` enum | map → `DifficultyConfig` |
+| `Difficulty` enum (`@Serializable`) | map → `DifficultyConfig`; field trong `AiMoveRequest` |
 | `GameEngine.legalMoves/applyMove` | xương sống MCTS |
 | `BoardLines` / `lineStatus` | ThreatDetector |
+| `ChipSequence(team, positions)` | locked channel trong encoder; check remove jack |
+| `GameState` `@Serializable` | HTTP body + self-play dump JSON |
+| `Player.isAi` / `PlayerId = String` | phân biệt bot; id kiểu `"p0"` như `GameRoute` |
+| `AiMoveRequest` / `AiMoveResponse` | contract HTTP — đừng tạo DTO song song |
+| `POST /ai/move`, `POST /game/new` | entry server; inject Facade ở Phase 1 |
+| `ErrorCodes.INVALID_REQUEST` | lỗi body / chooseMove fail |
 
 ### E. Gợi ý học từng bước nhỏ
 
@@ -1548,7 +1613,18 @@ Phase 9  [ ] regression suite
 
 Hãy coi **Phase 3** là đích gần: bot đã “biết nghĩ”. Phase 6–7 là lớp AlphaZero tối giản khi bạn đã có harness và encoder ổn định.
 
+Với BE hiện tại: mỗi lần nâng `AiService`, nhớ wire lại **`AiRoute`** (một instance) để HTTP và in-process cùng một bộ não.
+
 Khi implement, giữ guide này cạnh PR/commit nhỏ theo từng phase; mỗi phase một milestone có arena số liệu — đó là cách học chắc và tránh rewrite lớn.
 
 Chúc bạn triển khai vui và “xịn” dần theo đúng nhịp học tập.
-```
+
+---
+
+## 17. Changelog guide
+
+| Ngày | Thay đổi |
+|------|----------|
+| 20/07/2026 | Bản đầu: Phase 0–9, kiến trúc Facade → Tactical → ISMCTS → Eval → ONNX |
+| 23/07/2026 | Đồng bộ code BE mới: `model/*`, `POST /game/new`, `POST /ai/move`, serializable domain; dual-entry UI+HTTP |
+| 23/07/2026 | Phase 0–2 trong repo: domain fixes, arena, Facade, Tactical; thêm `TacticalEngineTest`; guide §2/Phase 2 phản ánh API thật (`findForceMove`) |
