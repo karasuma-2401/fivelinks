@@ -1,0 +1,23 @@
+{
+  "encoder_version": 1,
+  "channels": 12,
+  "height": 10,
+  "width": 10,
+  "layout": "NCHW",
+  "channel_meanings": [
+    "me_chips",
+    "opp_chips",
+    "empty",
+    "corners",
+    "locked",
+    "my_hand_playable",
+    "team1_seq_count",
+    "team2_seq_count",
+    "team3_seq_count",
+    "team1_to_win",
+    "team2_to_win",
+    "deck_size_norm"
+  ],
+  "max_actions": 5456,
+  "action_layout": "place[card*100+cell] | remove[...] | swap[card]"
+}
