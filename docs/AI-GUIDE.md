@@ -1364,8 +1364,8 @@ class OnnxNeuralInference(
 
 Đóng gói model:
 
-- Android: `assets/models/model_v1.onnx`
-- JVM: `resources/models/model_v1.onnx`
+- Android: `assets/models/model_v1.onx`
+- JVM: `resources/models/model_v1.onx`
 - iOS: bundle resource + ORT Mobile
 
 ### 7.4 Hybrid EvaluationEngine
@@ -1544,15 +1544,15 @@ Phase 2  [x] ThreatDetector
          [x] fixtures must-win/block + Facade
          [x] Facade gọi tactical
 
-Phase 3  [ ] MoveKey
-         [ ] Determinizer
-         [ ] MctsNode + SearchEngine
-         [ ] Facade gọi search
-         [ ] arena vs heuristic
+Phase 3  [x] MoveKey
+         [x] Determinizer
+         [x] MctsNode + SearchEngine
+         [x] Facade gọi search
+         [x] arena vs heuristic
 
-Phase 4  [ ] PositionEvaluator / PolicyPrior / EvaluationEngine
-         [ ] Heuristic* adapters
-         [ ] Search dùng EvaluationEngine
+Phase 4  [x] PositionEvaluator / PolicyPrior / EvaluationEngine
+         [x] Heuristic* adapters
+         [x] Search dùng EvaluationEngine
 
 Phase 5  [ ] ActionCodec
          [ ] StateEncoder

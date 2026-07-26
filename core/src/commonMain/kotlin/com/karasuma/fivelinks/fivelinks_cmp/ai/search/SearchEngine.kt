@@ -1,20 +1,19 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ai.search
 
 import com.karasuma.fivelinks.fivelinks_cmp.ai.DifficultyConfig
-import com.karasuma.fivelinks.fivelinks_cmp.ai.HeuristicEvaluator
+import com.karasuma.fivelinks.fivelinks_cmp.ai.eval.HeuristicEvaluationEngine
+import com.karasuma.fivelinks.fivelinks_cmp.ai.eval.IEvaluationEngine
 import com.karasuma.fivelinks.fivelinks_cmp.ai.tactical.TacticalEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
-import com.karasuma.fivelinks.fivelinks_cmp.domain.Move
 import com.karasuma.fivelinks.fivelinks_cmp.domain.PlayerId
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
-import kotlin.math.tanh
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
 class SearchEngine(
-    private val heuristic: HeuristicEvaluator = HeuristicEvaluator(),
-    private val tactical: TacticalEngine = TacticalEngine(heuristic),
+    private val evaluationEngine: IEvaluationEngine = HeuristicEvaluationEngine(),
+    private val tactical: TacticalEngine = TacticalEngine(),
     private val determinizer: Determinizer = Determinizer(),
 ) {
     fun search(
@@ -66,54 +65,45 @@ class SearchEngine(
             if (!state.isGameOver) {
                 val toPlay = state.currentPlayer.id
                 if (!node.expanded) {
-                    node.untried = GameEngine.legalMoves(state, toPlay).toMutableList()
+                    val legalMoves = GameEngine.legalMoves(state, toPlay)
+                    node.untried = tactical.orderMoves(state, toPlay, legalMoves).toMutableList()
+                    
+                    val eval = evaluationEngine.evaluate(state, rootTeam, toPlay, node.untried, wantPriors = true)
+                    node.untried.forEachIndexed { i, move ->
+                        val key = MoveKey.from(move)
+                        val child = MctsNode(parent = node, moveFromParent = move)
+                        child.prior = eval.priors?.get(i)?.toDouble() ?: (1.0 / node.untried.size)
+                        node.children[key] = child
+                    }
                     node.expanded = true
                 }
                 if (node.untried.isNotEmpty()) {
-                    node.untried = tactical.orderMoves(state, toPlay, node.untried).toMutableList()
                     val move = node.untried.removeAt(0)
                     val key = MoveKey.from(move)
-                    val child = MctsNode(parent = node, moveFromParent = move)
-                    val score = heuristic.score(state, move, toPlay)
-                    child.prior = softPrior(score)
-                    node.children[key] = child
-                    state = GameEngine.applyMove(state, move).getOrThrow()
-                    node = child
-                    path += node
+                    node.children[key]?.let {
+                        state = GameEngine.applyMove(state, move).getOrThrow()
+                        node = it
+                        path += node
+                    }
                 }
             }
 
             // EVALUATE
-            val value = evaluateLeaf(state, rootTeam)
+            val value = evaluationEngine.evaluate(state, rootTeam, state.currentPlayer.id, emptyList(), wantPriors = false).value
 
             // BACKUP
             for (n in path) {
                 n.visitCount += 1
-                n.totalValue += value
+                // Flip value if the node represents a move by the opponent
+                val teamOfNodePlayer = state.players.find { it.id == n.moveFromParent?.playerId }?.team
+                if (teamOfNodePlayer != null && teamOfNodePlayer != rootTeam) {
+                    n.totalValue -= value
+                } else {
+                    n.totalValue += value
+                }
             }
         }
 
         return root.children.mapValues { it.value.visitCount }
-    }
-
-    private fun evaluateLeaf(state: GameState, rootTeam: Team): Double {
-        val winner = state.winner
-        if (winner != null) {
-            return when (winner) {
-                rootTeam -> 1.0
-                else -> -1.0
-            }
-        }
-        val mySeq = state.sequencesOf(rootTeam)
-        val oppSeq = state.config.teams.filter { it != rootTeam }.sumOf { state.sequencesOf(it) }
-        val myOpen = com.karasuma.fivelinks.fivelinks_cmp.ai.tactical.ThreatDetector.countOpenFours(state, rootTeam)
-        val oppOpen = state.config.teams.filter { it != rootTeam }
-            .sumOf { com.karasuma.fivelinks.fivelinks_cmp.ai.tactical.ThreatDetector.countOpenFours(state, it) }
-        val raw = (mySeq - oppSeq) * 2.0 + (myOpen - oppOpen) * 0.5
-        return tanh(raw)
-    }
-
-    private fun softPrior(score: Double): Double {
-        return 1.0 / (1.0 + kotlin.math.exp(-score / 1000.0))
     }
 }

@@ -1,5 +1,6 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ai
 
+import com.karasuma.fivelinks.fivelinks_cmp.ai.eval.HeuristicEvaluationEngine
 import com.karasuma.fivelinks.fivelinks_cmp.ai.search.MoveKey
 import com.karasuma.fivelinks.fivelinks_cmp.ai.search.SearchEngine
 import com.karasuma.fivelinks.fivelinks_cmp.ai.search.toMove
@@ -13,7 +14,7 @@ import kotlin.random.Random
 class AiFacadeService(
     private val heuristic: HeuristicEvaluator = HeuristicEvaluator(),
     private val tactical: TacticalEngine = TacticalEngine(heuristic),
-    private val search: SearchEngine = SearchEngine(heuristic, tactical),
+    private val search: SearchEngine = SearchEngine(HeuristicEvaluationEngine(), tactical),
     private val random: Random = Random.Default
 ): AiService {
     override suspend fun chooseMove(
