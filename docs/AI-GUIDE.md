@@ -1554,9 +1554,12 @@ Phase 4  [x] PositionEvaluator / PolicyPrior / EvaluationEngine
          [x] Heuristic* adapters
          [x] Search dùng EvaluationEngine
 
-Phase 5  [ ] ActionCodec
-         [ ] StateEncoder
-         [ ] encoder_spec.json
+Phase 5  [x] ActionCodec
+         [x] StateEncoder
+         [x] encoder_spec.json
+         [x] Unit test: encode hai state khác → tensor khác
+         [x] `legalMask` chỉ true đúng `legalMoves`
+         [x] Spec JSON committed
 
 Phase 6  [ ] self-play export
          [ ] TinyPV train
