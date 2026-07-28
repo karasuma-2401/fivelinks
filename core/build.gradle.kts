@@ -50,3 +50,9 @@ kotlin {
         }
     }
 }
+
+tasks.withType<Test>().configureEach {
+    listOf("selfplay.run", "selfplay.games", "selfplay.out").forEach { key ->
+        System.getProperty(key)?.let { systemProperty(key, it) }
+    }
+}

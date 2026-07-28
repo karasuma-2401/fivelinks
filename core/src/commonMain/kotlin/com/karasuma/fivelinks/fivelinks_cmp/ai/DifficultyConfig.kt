@@ -46,5 +46,16 @@ data class DifficultyConfig(
                 evalMode = EvalMode.HeuristicOnly, // change and setup later
             )
         }
+
+        /** Self-play data gen: keep visit diversity (temperature > 0), budget lighter than HARD. */
+        fun selfPlay(): DifficultyConfig = DifficultyConfig(
+            maxSimulations = 300,
+            timeBudgetMs = 200,
+            temperature = 1.0,
+            topK = 15,
+            useTacticalForced = true,
+            determinizations = 4,
+            evalMode = EvalMode.HeuristicOnly,
+        )
     }
 }

@@ -20,6 +20,13 @@ class ActionCodecTest {
     private val cardIndex = Cards.fullDeck.withIndex().associate { it.value to it.index }
 
     @Test
+    fun maxActions_matchesFullDeckLayout() {
+        // place + remove + swap = 52*100 + 52*100 + 52
+        assertEquals(10452, codec.maxActions)
+        assertEquals(codec.placeSize + codec.removeSize + codec.swapSize, codec.maxActions)
+    }
+
+    @Test
     fun encode_placeMove_isCorrect() {
         val card = Card(suit = Suit.SPADES, rank = Rank.ACE)
         val pos = BoardPosition(3, 4)

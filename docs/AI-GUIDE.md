@@ -1300,9 +1300,10 @@ Chỉ thay model production khi arena vs baseline MCTS-heuristic **thắng rõ**
 
 ### Done Phase 6
 
-- [ ] `model_v1.onnx` + `encoder_spec.json`
-- [ ] Bảng winrate vs baseline
-- [ ] Metadata `encoder_version` khớp Kotlin
+- [x] `encoder_spec.json` (Kotlin + `ml/specs/`) khớp `StateEncoder` 12ch
+- [x] Self-play JSONL exporter (`SelfPlayRunnerTest`) + TinyPV train/export scripts
+- [ ] `model_v1.onnx` artifact (generate locally — xem `docs/ai-training.md`)
+- [ ] Bảng winrate vs baseline + promote rule (Phase 7/arena)
 
 ---
 
@@ -1561,9 +1562,9 @@ Phase 5  [x] ActionCodec
          [x] `legalMask` chỉ true đúng `legalMoves`
          [x] Spec JSON committed
 
-Phase 6  [ ] self-play export
-         [ ] TinyPV train
-         [ ] export ONNX + promote
+Phase 6  [x] self-play export (`SelfPlayRunnerTest` → `ml/data/*.jsonl`)
+         [x] TinyPV train (`ml/train/train.py` + soft CE + MSE)
+         [x] export ONNX (`ml/train/export_onnx.py`) — promote via arena vẫn thủ công
 
 Phase 7  [ ] NeuralInference expect/actual
          [ ] HybridEvaluationEngine
