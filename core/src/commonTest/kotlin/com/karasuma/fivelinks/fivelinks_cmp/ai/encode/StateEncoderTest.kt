@@ -6,6 +6,8 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class StateEncoderTest {
 
@@ -13,49 +15,48 @@ class StateEncoderTest {
 
     @Test
     fun encode_outputHasCorrectSize() {
-        val config = GameConfig.forPlayer(2, 2, 12L)
-        val players = listOf(
-            Player("p0", "Player 1", Team.RED, isAi = false),
-            Player("p1", "Player 2", Team.BLUE, isAi = true)
-        )
-        val state = GameEngine.initialize(config, players)
-        
+        val state = initState(12L)
         val tensor = encoder.encode(state, Team.RED)
-        
-        assertEquals(encoder.size, tensor.size, "Encoded tensor size should match encoder.size")
-        assertEquals(10 * 10 * 10, tensor.size, "Encoded tensor size should be 1000")
+
+        assertEquals(encoder.size, tensor.size)
+        assertEquals(StateEncoder.CHANNELS * 10 * 10, tensor.size)
+        assertEquals(1200, tensor.size)
     }
 
     @Test
     fun encode_initialState_channelsArePlausible() {
-        val config = GameConfig.forPlayer(2, 2, seed = 12L)
-        val players = listOf(
-            Player("p0", "Player 1", Team.RED, isAi = false),
-            Player("p1", "Player 2", Team.BLUE, isAi = true)
-        )
-        val state = GameEngine.initialize(config, players)
+        val state = initState(12L)
         val tensor = encoder.encode(state, Team.RED)
 
         fun idx(c: Int, r: Int, col: Int) = c * 100 + r * 10 + col
+        fun channelSum(c: Int) = (0..99).sumOf { tensor[idx(c, it / 10, it % 10)].toDouble() }
 
-        // Channel 0 (me_chips): Should be all 0s at the start
-        val myChipsSum = (0..99).sumOf { tensor[idx(0, it / 10, it % 10)].toDouble() }
-        assertEquals(0.0, myChipsSum)
-
-        // Channel 1 (opp_chips): Should be all 0s at the start
-        val oppChipsSum = (0..99).sumOf { tensor[idx(1, it / 10, it % 10)].toDouble() }
-        assertEquals(0.0, oppChipsSum)
-
-        // Channel 2 (empty): Should have 96 ones (100 cells - 4 corners)
-        val emptySum = (0..99).sumOf { tensor[idx(2, it / 10, it % 10)].toDouble() }
-        assertEquals(96.0, emptySum)
-
-        // Channel 3 (corners): Should have 4 ones
-        val cornersSum = (0..99).sumOf { tensor[idx(3, it / 10, it % 10)].toDouble() }
-        assertEquals(4.0, cornersSum)
-
-        // Channel 4 (locked): Should be all 0s at the start
-        val lockedSum = (0..99).sumOf { tensor[idx(4, it / 10, it % 10)].toDouble() }
-        assertEquals(0.0, lockedSum)
+        assertEquals(0.0, channelSum(0))
+        assertEquals(0.0, channelSum(1))
+        assertEquals(96.0, channelSum(2))
+        assertEquals(4.0, channelSum(3))
+        assertEquals(0.0, channelSum(4))
+        assertTrue(channelSum(5) > 0.0, "hand playable should mark some cells")
+        assertEquals(0.0, channelSum(6))
+        assertEquals(0.0, channelSum(7))
+        assertEquals(0.0, channelSum(8))
+        assertEquals(100.0, channelSum(9), absoluteTolerance = 1e-4) // RED needs full toWin → 1.0 * 100
+        assertEquals(100.0, channelSum(10), absoluteTolerance = 1e-4)
+        assertTrue(channelSum(11) in 1.0..100.0, "deck norm should be positive after deal")
     }
+
+    @Test
+    fun encode_differentSeeds_produceDifferentTensors() {
+        val a = encoder.encode(initState(1L), Team.RED)
+        val b = encoder.encode(initState(2L), Team.RED)
+        assertNotEquals(a.toList(), b.toList())
+    }
+
+    private fun initState(seed: Long) = GameEngine.initialize(
+        GameConfig.forPlayer(2, 2, seed),
+        listOf(
+            Player("p0", "Player 1", Team.RED, isAi = false),
+            Player("p1", "Player 2", Team.BLUE, isAi = true),
+        ),
+    )
 }

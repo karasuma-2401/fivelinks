@@ -12,17 +12,18 @@ fun interface IPositionEvaluator {
 fun interface IPolicyPrior {
     fun priors(state: GameState, playerId: PlayerId, moves: List<Move>): FloatArray
 }
+
 data class EvalResult(
     val value: Float,
-    val priors: FloatArray?
+    val priors: FloatArray?,
 )
 
-fun interface IEvaluationEngine {
-    fun evaluate(
+interface IEvaluationEngine {
+    suspend fun evaluate(
         state: GameState,
         perspective: Team,
         playerId: PlayerId,
         moves: List<Move>,
-        wantPriors: Boolean
+        wantPriors: Boolean,
     ): EvalResult
 }

@@ -18,6 +18,6 @@
     "team2_to_win",
     "deck_size_norm"
   ],
-  "max_actions": 5456,
+  "max_actions": 10452,
   "action_layout": "place[card*100+cell] | remove[...] | swap[card]"
 }

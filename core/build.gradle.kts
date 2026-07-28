@@ -48,5 +48,17 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
         }
+        jvmMain.dependencies {
+            implementation(libs.onnxruntime)
+        }
+        androidMain.dependencies {
+            implementation(libs.onnxruntime.android)
+        }
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    listOf("selfplay.run", "selfplay.games", "selfplay.out").forEach { key ->
+        System.getProperty(key)?.let { systemProperty(key, it) }
     }
 }

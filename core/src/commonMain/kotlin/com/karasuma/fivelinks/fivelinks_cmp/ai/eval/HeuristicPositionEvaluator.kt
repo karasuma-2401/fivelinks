@@ -38,16 +38,16 @@ class HeuristicPrior(
 
 class HeuristicEvaluationEngine(
     private val values: IPositionEvaluator = HeuristicPositionEvaluator(),
-    private val policy: IPolicyPrior = HeuristicPrior()
-): IEvaluationEngine {
-    override fun evaluate(
+    private val policy: IPolicyPrior = HeuristicPrior(),
+) : IEvaluationEngine {
+    override suspend fun evaluate(
         state: GameState,
         perspective: Team,
         playerId: PlayerId,
         moves: List<Move>,
-        wantPriors: Boolean
+        wantPriors: Boolean,
     ): EvalResult = EvalResult(
         value = values.value(state, perspective),
-        priors = if (wantPriors) policy.priors(state, playerId, moves) else null
+        priors = if (wantPriors) policy.priors(state, playerId, moves) else null,
     )
 }

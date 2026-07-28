@@ -1,9 +1,13 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ai
 
+import com.karasuma.fivelinks.fivelinks_cmp.ai.encode.ActionCodec
+import com.karasuma.fivelinks.fivelinks_cmp.ai.encode.StateEncoder
 import com.karasuma.fivelinks.fivelinks_cmp.ai.eval.HeuristicEvaluationEngine
-import com.karasuma.fivelinks.fivelinks_cmp.ai.search.MoveKey
+import com.karasuma.fivelinks.fivelinks_cmp.ai.eval.HybridEvaluationEngine
+import com.karasuma.fivelinks.fivelinks_cmp.ai.eval.IEvaluationEngine
+import com.karasuma.fivelinks.fivelinks_cmp.ai.inference.NeuralInference
+import com.karasuma.fivelinks.fivelinks_cmp.ai.inference.createNeuralInferenceOrNull
 import com.karasuma.fivelinks.fivelinks_cmp.ai.search.SearchEngine
-import com.karasuma.fivelinks.fivelinks_cmp.ai.search.toMove
 import com.karasuma.fivelinks.fivelinks_cmp.ai.tactical.TacticalEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
@@ -14,46 +18,40 @@ import kotlin.random.Random
 class AiFacadeService(
     private val heuristic: HeuristicEvaluator = HeuristicEvaluator(),
     private val tactical: TacticalEngine = TacticalEngine(heuristic),
-    private val search: SearchEngine = SearchEngine(HeuristicEvaluationEngine(), tactical),
-    private val random: Random = Random.Default
-): AiService {
+    private val neural: NeuralInference? = createNeuralInferenceOrNull(),
+    private val random: Random = Random.Default,
+) : AiService {
+    private val heuristicEval = HeuristicEvaluationEngine()
+    private val hybridEval = HybridEvaluationEngine(
+        heuristic = heuristicEval,
+        encoder = StateEncoder(),
+        codec = ActionCodec(),
+        neural = neural,
+    )
+
     override suspend fun chooseMove(
         state: GameState,
         playerId: PlayerId,
-        difficulty: Difficulty
+        difficulty: Difficulty,
     ): Move {
         val config = DifficultyConfig.from(difficulty)
-        val legal = GameEngine.legalMoves(state,playerId)
-        require(legal.isNotEmpty()) { "No legal moves for $playerId"}
+        val legal = GameEngine.legalMoves(state, playerId)
+        require(legal.isNotEmpty()) { "No legal moves for $playerId" }
 
         if (config.useTacticalForced) {
             tactical.findForceMove(state, playerId)?.let { return it }
         }
 
-        val visits = search.search(state, playerId, config)
+        val eval = evaluationFor(config.evalMode)
+        val visits = SearchEngine(eval, tactical).search(state, playerId, config)
         if (visits.isEmpty()) {
             return heuristic.chooseMove(state, playerId, difficulty)
         }
         return selectByVisits(visits, playerId, config, random)
     }
 
-    private fun selectByVisits(
-        visits: Map<MoveKey, Int>,
-        playerId: PlayerId,
-        config: DifficultyConfig,
-        random: Random,
-    ): Move {
-        require(visits.isNotEmpty())
-        val scored = visits.entries.map { (k, n) -> k.toMove(playerId) to n.toDouble() }
-        return if (config.temperature <= 0.0 || config.topK <= 1) {
-            scored.maxBy { it.second }.first
-        } else {
-            SoftmaxPicker.pick(
-                scored.sortedByDescending { it.second }.take(config.topK),
-                temperature = config.temperature,
-                random = random,
-                scoreScale = 1.0, // visit counts khác scale heuristic
-            )
-        }
+    private fun evaluationFor(mode: EvalMode): IEvaluationEngine = when (mode) {
+        EvalMode.HeuristicOnly -> heuristicEval
+        EvalMode.Hybrid, EvalMode.NeuralFirst -> hybridEval
     }
 }
