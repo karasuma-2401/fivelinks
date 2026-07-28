@@ -2,8 +2,8 @@ package com.karasuma.fivelinks.fivelinks_cmp.ai
 
 enum class EvalMode {
     HeuristicOnly,
-    Hybrid, // setup later
-    NeuralFirst
+    Hybrid, // NN + heuristic fallback (Phase 7)
+    NeuralFirst, // prefer NN when available; still falls back
 }
 data class DifficultyConfig(
     val maxSimulations: Int,
@@ -43,7 +43,7 @@ data class DifficultyConfig(
                 topK = 1,
                 useTacticalForced = true,
                 determinizations = 9,
-                evalMode = EvalMode.HeuristicOnly, // change and setup later
+                evalMode = EvalMode.Hybrid,
             )
         }
 

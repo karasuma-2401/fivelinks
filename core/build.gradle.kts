@@ -48,6 +48,12 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
         }
+        jvmMain.dependencies {
+            implementation(libs.onnxruntime)
+        }
+        androidMain.dependencies {
+            implementation(libs.onnxruntime.android)
+        }
     }
 }
 

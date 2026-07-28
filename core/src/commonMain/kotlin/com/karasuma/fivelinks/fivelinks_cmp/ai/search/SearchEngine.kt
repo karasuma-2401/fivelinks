@@ -15,7 +15,7 @@ class SearchEngine(
     private val tactical: TacticalEngine = TacticalEngine(),
     private val determinizer: Determinizer = Determinizer(),
 ) {
-    fun search(
+    suspend fun search(
         realState: GameState,
         playerId: PlayerId,
         config: DifficultyConfig,
@@ -36,7 +36,7 @@ class SearchEngine(
         return aggregate
     }
 
-    private fun runMcts(
+    private suspend fun runMcts(
         rootState: GameState,
         rootPlayerId: PlayerId,
         simulations: Int,

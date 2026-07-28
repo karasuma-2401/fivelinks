@@ -10,6 +10,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
 import com.karasuma.fivelinks.fivelinks_cmp.domain.PlayerId
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -63,7 +64,9 @@ class SelfPlayRunnerTest {
                 val legalMoves = GameEngine.legalMoves(state, currentPlayer.id)
                 if (legalMoves.isEmpty()) break
 
-                val visits = searchEngine.search(state, currentPlayer.id, diffConfig)
+                val visits = runBlocking {
+                    searchEngine.search(state, currentPlayer.id, diffConfig)
+                }
                 val chosenMove = if (visits.isEmpty()) {
                     legalMoves.maxBy { heuristic.score(state, it, currentPlayer.id) }
                 } else {
