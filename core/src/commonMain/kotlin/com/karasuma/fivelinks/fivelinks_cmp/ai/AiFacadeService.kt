@@ -28,6 +28,7 @@ class AiFacadeService(
         codec = ActionCodec(),
         neural = neural,
     )
+    private val searchEngine = SearchEngine(tactical)
 
     override suspend fun chooseMove(
         state: GameState,
@@ -43,7 +44,7 @@ class AiFacadeService(
         }
 
         val eval = evaluationFor(config.evalMode)
-        val visits = SearchEngine(eval, tactical).search(state, playerId, config)
+        val visits = searchEngine.search(state, playerId, config, eval)
         if (visits.isEmpty()) {
             return heuristic.chooseMove(state, playerId, difficulty)
         }
