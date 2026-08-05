@@ -2,6 +2,7 @@ package com.karasuma.fivelinks.fivelinks_cmp.ai
 
 import com.karasuma.fivelinks.fivelinks_cmp.ai.encode.ActionCodec
 import com.karasuma.fivelinks.fivelinks_cmp.ai.encode.StateEncoder
+import com.karasuma.fivelinks.fivelinks_cmp.ai.eval.HeuristicEvaluationEngine
 import com.karasuma.fivelinks.fivelinks_cmp.ai.export.TrainSample
 import com.karasuma.fivelinks.fivelinks_cmp.ai.search.SearchEngine
 import com.karasuma.fivelinks.fivelinks_cmp.ai.search.toMove
@@ -30,6 +31,7 @@ class SelfPlayRunnerTest {
     private val codec = ActionCodec()
     private val searchEngine = SearchEngine()
     private val heuristic = HeuristicEvaluator()
+    private val evaluationEngine = HeuristicEvaluationEngine()
     private val json = Json { encodeDefaults = true }
 
     @Test
@@ -65,7 +67,7 @@ class SelfPlayRunnerTest {
                 if (legalMoves.isEmpty()) break
 
                 val visits = runBlocking {
-                    searchEngine.search(state, currentPlayer.id, diffConfig)
+                    searchEngine.search(state, currentPlayer.id, diffConfig, evaluationEngine)
                 }
                 val chosenMove = if (visits.isEmpty()) {
                     legalMoves.maxBy { heuristic.score(state, it, currentPlayer.id) }

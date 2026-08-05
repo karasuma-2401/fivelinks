@@ -1,6 +1,7 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ai.search
 
 import com.karasuma.fivelinks.fivelinks_cmp.ai.DifficultyConfig
+import com.karasuma.fivelinks.fivelinks_cmp.ai.eval.HeuristicEvaluationEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameConfig
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
@@ -23,7 +24,8 @@ class SearchEngineTest {
         val legal = GameEngine.legalMoves(state, playerId)
         assertTrue(legal.isNotEmpty())
 
-        val visits = SearchEngine().search(state, playerId, DifficultyConfig.selfPlay())
+        val evaluationEngine = HeuristicEvaluationEngine()
+        val visits = SearchEngine().search(state, playerId, DifficultyConfig.selfPlay(), evaluationEngine)
         assertTrue(visits.isNotEmpty(), "MCTS must return at least one root child visit")
         assertTrue(visits.values.sum() > 0)
     }

@@ -1,17 +1,17 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ai.search
 
 import com.karasuma.fivelinks.fivelinks_cmp.ai.DifficultyConfig
-import com.karasuma.fivelinks.fivelinks_cmp.ai.eval.HeuristicEvaluationEngine
 import com.karasuma.fivelinks.fivelinks_cmp.ai.eval.IEvaluationEngine
 import com.karasuma.fivelinks.fivelinks_cmp.ai.tactical.TacticalEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.PlayerId
+import kotlinx.coroutines.yield
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
 class SearchEngine(
-    private val evaluationEngine: IEvaluationEngine = HeuristicEvaluationEngine(),
     private val tactical: TacticalEngine = TacticalEngine(),
     private val determinizer: Determinizer = Determinizer(),
 ) {
@@ -19,6 +19,7 @@ class SearchEngine(
         realState: GameState,
         playerId: PlayerId,
         config: DifficultyConfig,
+        evaluationEngine: IEvaluationEngine,
     ): Map<MoveKey, Int> {
         val aggregate = mutableMapOf<MoveKey, Int>()
         val simsPerWorld = (config.maxSimulations / config.determinizations.coerceAtLeast(1))
@@ -28,7 +29,7 @@ class SearchEngine(
         repeat(config.determinizations) {
             if (deadline.hasPassedNow()) return@repeat
             val world = determinizer.sample(realState, playerId)
-            val rootVisits = runMcts(world, playerId, simsPerWorld, config)
+            val rootVisits = runMcts(world, playerId, simsPerWorld, config, deadline, evaluationEngine)
             for ((key, n) in rootVisits) {
                 aggregate[key] = (aggregate[key] ?: 0) + n
             }
@@ -41,11 +42,19 @@ class SearchEngine(
         rootPlayerId: PlayerId,
         simulations: Int,
         config: DifficultyConfig,
+        deadline: TimeMark,
+        evaluationEngine: IEvaluationEngine,
     ): Map<MoveKey, Int> {
         val rootTeam = rootState.players.first { it.id == rootPlayerId }.team
         val root = MctsNode()
 
-        repeat(simulations) {
+        for (i in 0 until simulations) {
+            // Check for cancellation and time budget.
+            if (i % 16 == 0) {
+                yield()
+                if (deadline.hasPassedNow()) break
+            }
+
             var state = rootState
             var node = root
             val path = mutableListOf(node)
@@ -65,10 +74,10 @@ class SearchEngine(
                     val legalMoves = GameEngine.legalMoves(state, toPlay)
                     val ordered = tactical.orderMoves(state, toPlay, legalMoves)
                     val eval = evaluationEngine.evaluate(state, rootTeam, toPlay, ordered, wantPriors = true)
-                    ordered.forEachIndexed { i, move ->
+                    ordered.forEachIndexed { index, move ->
                         val key = MoveKey.from(move)
                         val child = MctsNode(parent = node, moveFromParent = move)
-                        child.prior = eval.priors?.getOrNull(i)?.toDouble()
+                        child.prior = eval.priors?.getOrNull(index)?.toDouble()
                             ?: (1.0 / ordered.size.coerceAtLeast(1))
                         node.children[key] = child
                     }

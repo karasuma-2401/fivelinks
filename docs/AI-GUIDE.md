@@ -1425,10 +1425,10 @@ Difficulty.EASY -> ... HeuristicOnly  // nhanh, đỡ tốn pin
 
 ### Done Phase 7
 
-- [ ] Android (hoặc JVM) chạy được hybrid
+- [x] Android (hoặc JVM) chạy được hybrid
 - [ ] **Server** `/ai/move` dùng cùng `AiFacadeService` + hybrid (không `new HeuristicEvaluator()` mỗi request)
-- [ ] Web không crash — null inference local → heuristic **hoặc** ủy quyền HTTP
-- [ ] Timeout / exception → fallback
+- [x] Web không crash — null inference local → heuristic **hoặc** ủy quyền HTTP
+- [x] Timeout / exception → fallback
 - [ ] Response thống nhất `AiMoveResponse` (nếu client đã migrate)
 
 ---
@@ -1462,8 +1462,8 @@ suspend fun chooseMove(...) {
 
 ### Done Phase 8
 
-- [ ] HARD cảm giác mạnh, latency chấp nhận được trên máy thật
-- [ ] Ba mức difficulty phân biệt rõ trên arena
+- [x] HARD cảm giác mạnh, latency chấp nhận được trên máy thật
+- [x] Ba mức difficulty phân biệt rõ trên arena
 
 ---
 
@@ -1497,6 +1497,11 @@ data class AiDebugInfo(
 ```
 
 Không bắt buộc expose ra UI production.
+
+### Done Phase 9
+
+- [x] regression suite
+- [x] docs ai-*
 
 ---
 
@@ -1566,15 +1571,15 @@ Phase 6  [x] self-play export (`SelfPlayRunnerTest` → `ml/data/*.jsonl`)
          [x] TinyPV train (`ml/train/train.py` + soft CE + MSE)
          [x] export ONNX (`ml/train/export_onnx.py`) — promote via arena vẫn thủ công
 
-Phase 7  [ ] NeuralInference expect/actual
-         [ ] HybridEvaluationEngine
-         [ ] bundle model
+Phase 7  [x] NeuralInference expect/actual
+         [x] HybridEvaluationEngine
+         [x] bundle model
 
-Phase 8  [ ] tune budgets
-         [ ] ensureActive / deadline
+Phase 8  [x] tune budgets
+         [x] ensureActive / deadline
 
-Phase 9  [ ] regression suite
-         [ ] docs ai-* 
+Phase 9  [x] regression suite
+         [x] docs ai-*
 ```
 
 ### C. Rủi ro thường gặp

@@ -1,5 +1,6 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ai
 
+import com.karasuma.fivelinks.fivelinks_cmp.ai.tactical.ThreatDetector
 import com.karasuma.fivelinks.fivelinks_cmp.domain.BoardLines
 import com.karasuma.fivelinks.fivelinks_cmp.domain.BoardPosition
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
@@ -12,10 +13,10 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.lineStatus
 import kotlin.math.abs
 import kotlin.random.Random
 
-class HeuristicEvaluator (
+class HeuristicEvaluator(
     private val weights: HeuristicWeights = HeuristicWeights.default,
-    private val random: Random = Random
-): AiService {
+    private val random: Random = Random.Default
+) : AiService {
     override suspend fun chooseMove(
         state: GameState,
         playerId: PlayerId,
@@ -28,37 +29,55 @@ class HeuristicEvaluator (
 
         return when (difficulty) {
             Difficulty.HARD -> sorted.first().first
-            Difficulty.MEDIUM, Difficulty.EASY -> SoftmaxPicker.pick(sorted.take(difficulty.topK), difficulty.temperature)
+            Difficulty.MEDIUM, Difficulty.EASY -> SoftmaxPicker.pick(
+                sorted.take(difficulty.topK),
+                difficulty.temperature
+            )
         }
     }
-
-    fun scoreAll(state: GameState, playerId: PlayerId): List<Pair<Move, Double>> =
-        GameEngine.legalMoves(state, playerId).map { it to score(state, it, playerId) }
 
     fun score(state: GameState, move: Move, playerId: PlayerId): Double {
         val player = state.players.first { it.id == playerId }
         val myTeam = player.team
         val oppTeams = (state.config.teams - myTeam).toList()
 
-        val beforeMyOpen4 = countOpenFours(state, myTeam)
-        val beforeOppOpen4 = oppTeams.sumOf { countOpenFours(state, it) }
-
         val result = GameEngine.applyMove(state, move)
         if (result.isFailure) return Double.NEGATIVE_INFINITY
         val after = result.getOrThrow()
 
-        val newSeqs = after.completedSequence.size - state.completedSequence.size
-        val afterMyOpen4 = countOpenFours(after, myTeam)
-        val afterOppOpen4 = oppTeams.sumOf { countOpenFours(after, it) }
+        // --- Critical Priorities ---
+        if (after.winner == myTeam) {
+            return 1_000_000.0
+        }
+
+        val beforeMyOpen4 = ThreatDetector.countOpenFours(state, myTeam)
+        val beforeOppOpen4 = oppTeams.sumOf { ThreatDetector.countOpenFours(state, it) }
+        val afterMyOpen4 = ThreatDetector.countOpenFours(after, myTeam)
+        val afterOppOpen4 = oppTeams.sumOf { ThreatDetector.countOpenFours(after, it) }
 
         var score = 0.0
-        score += newSeqs * weights.completeSequence
-        score += (afterMyOpen4 - beforeMyOpen4).coerceAtLeast(0) * weights.selfOpenFour
-        score += (beforeOppOpen4 - afterOppOpen4).coerceAtLeast(0) *
-                weights.blockOpponentOpenFour * weights.defensiveMultiplier
 
-        if (afterMyOpen4 - beforeMyOpen4 >= 2) score += weights.doubleThreat
+        // Blocked a threat - this is a very high priority
+        if (beforeOppOpen4 > afterOppOpen4) {
+            score += weights.blockOpponentOpenFour * (beforeOppOpen4 - afterOppOpen4)
+        }
 
+        // --- Major Priorities ---
+        val newSeqs = after.completedSequence.size - state.completedSequence.size
+        if (newSeqs > 0) {
+            score += newSeqs * weights.completeSequence
+        }
+
+        // Created a new open-four
+        if (afterMyOpen4 > beforeMyOpen4) {
+            score += (afterMyOpen4 - beforeMyOpen4) * weights.selfOpenFour
+        }
+
+        if (afterMyOpen4 - beforeMyOpen4 >= 2) {
+            score += weights.doubleThreat
+        }
+
+        // --- Minor Priorities & Penalties ---
         when (move) {
             is Move.Place -> {
                 score += extensionAround(after, move.position, myTeam) * weights.extendSelfPerChip
@@ -71,6 +90,8 @@ class HeuristicEvaluator (
                 }
             }
             is Move.Remove -> {
+                // Add center bias as a tie-breaker for remove moves
+                score += centerBias(move.position) * weights.centerControl
                 val wasThreat = (beforeOppOpen4 - afterOppOpen4) > 0
                 if (!wasThreat) score += weights.wasteRemoveJack
             }
@@ -81,21 +102,11 @@ class HeuristicEvaluator (
         return score
     }
 
-
-    private fun countOpenFours(state: GameState, team: Team): Int {
-        var count = 0
-        for (line in BoardLines.all) {
-            val s = lineStatus(state,line, team)
-            if (s.openForTeam && s.controlledByTeam == 4 && s.empty == 1) count++
-        }
-        return count
-    }
-
     private fun extensionAround(state: GameState, pos: BoardPosition, team: Team): Int {
         val lines = BoardLines.throughPosition[pos] ?: return 0
         var chips = 0
         for (line in lines) {
-            val s = lineStatus(state,line, team)
+            val s = lineStatus(state, line, team)
             if (s.opponent > 0) continue
             chips += (s.own - 1).coerceAtLeast(0)
         }
@@ -107,7 +118,7 @@ class HeuristicEvaluator (
         var total = 0
         for (line in lines) {
             for (t in oppTeams) {
-                val s = lineStatus(state,line, t)
+                val s = lineStatus(state, line, t)
                 if (s.own >= 2 && s.opponent == 0) total += s.own
             }
         }

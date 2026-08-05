@@ -42,7 +42,7 @@ data class DifficultyConfig(
                 temperature = 0.0,
                 topK = 1,
                 useTacticalForced = true,
-                determinizations = 9,
+                determinizations = 6, // Reduced from 9 to 6 to improve latency
                 evalMode = EvalMode.Hybrid,
             )
         }
