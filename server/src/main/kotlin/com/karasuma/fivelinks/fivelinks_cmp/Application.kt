@@ -22,11 +22,15 @@ fun main() {
 
 @Serializable
 data class ProtocolVersionPayload(val minor: Int, val major: Int, val name: String)
+
 fun Application.module() {
+    module(AiFacadeService())
+}
+
+fun Application.module(aiService: AiService) {
     install(ContentNegotiation) {
         json(ProtocolJson)
     }
-    val aiService: AiService = AiFacadeService()
     routing {
         aiRoute(aiService)
         gameRoute()
@@ -48,4 +52,3 @@ fun Application.module() {
         }
     }
 }
-
