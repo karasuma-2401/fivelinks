@@ -8,7 +8,8 @@ data class GameConfig(
     val teamsByPlayerIndex: List<Team>,
     val handSize: Int = handSizeForPlayerCount(playerCount),
     val sequenceToWin: Int = sequenceToWinForPlayerCount(teamsByPlayerIndex.size),
-    val seed: Long = 0
+    val seed: Long = 0,
+    val enableTacticalCrafting: Boolean = false
 ) {
     init {
         require(playerCount > 0) { "PlayerCount must be positive." }
@@ -29,6 +30,8 @@ data class GameConfig(
             else -> error("unknown playerCount $playerCount")
         }
         fun soloVsAi(seed: Long) = forPlayer(2, 2, seed)
+        fun tactical(playerCount: Int, teams: Int, seed: Long): GameConfig =
+            forPlayer(playerCount, teams, seed).copy(enableTacticalCrafting = true)
         fun forPlayer(playerCount: Int, teams: Int, seed: Long): GameConfig {
             val teamOrder = listOf(Team.RED, Team.BLUE, Team.GREEN)
             val teamsByPlayerIndex = (0 until playerCount).map { teamOrder[it % teams] }

@@ -30,6 +30,7 @@ object GameEngine {
             currentPlayerIndex = 0
         )
     }
+
     fun applyMove(state: GameState, move: Move): Result<GameState> {
         val validation = MoveValidator.validate(move, state)
         if (validation.isFailure) return Result.failure(validation.exceptionOrNull()!!)
@@ -38,12 +39,16 @@ object GameEngine {
             is Move.Place -> applyPlace(state, move)
             is Move.Remove -> applyRemove(state, move)
             is Move.SwapDeadCard -> applySwapDeadCard(state, move)
+            is Move.CraftPlace -> applyCraftPlace(state, move)
+            is Move.CraftRemove -> applyCraftRemove(state, move)
+            is Move.DivineWipe -> applyDivineWipe(state, move)
         }
         return Result.success(next)
     }
-    fun advanceTurn (state: GameState): GameState {
+
+    fun advanceTurn(state: GameState): GameState {
         val nextPlayerIndex = (state.currentPlayerIndex + 1) % state.players.size
-        return  state.copy(currentPlayerIndex = nextPlayerIndex, turnNumber = state.turnNumber + 1)
+        return state.copy(currentPlayerIndex = nextPlayerIndex, turnNumber = state.turnNumber + 1)
     }
 
     fun applyPlace(state: GameState, move: Move.Place): GameState {
@@ -100,6 +105,80 @@ object GameEngine {
         return advanceTurn(swapped)
     }
 
+    fun applyCraftPlace(state: GameState, move: Move.CraftPlace): GameState {
+        val player = state.players.first { it.id == move.playerId }
+        val chipsAfter = state.chips.place(move.position, player.team)
+        val cardsToDiscard = listOf(move.card1, move.card2)
+        val handAfter = state.handOf(player).withoutAll(cardsToDiscard)
+        val (drawnCards, deckAfter) = drawCards(state.deck, cardsToDiscard.size)
+        val handFinal = handAfter.withAll(drawnCards)
+
+        val placed = state.copy(
+            chips = chipsAfter,
+            deck = deckAfter,
+            hands = state.hands.plus(player.id to handFinal),
+            lastMove = move,
+            discard = state.discard.plus(cardsToDiscard)
+        )
+        val newSeqs = SequenceDetector.findSequence(placed, player.team)
+        val withSeqs = if (newSeqs.isEmpty()) placed else placed.copy(completedSequence = placed.completedSequence.plus(newSeqs))
+
+        val winner = WinDetector.detect(withSeqs)
+        val finalState = if (winner != null) withSeqs.copy(winner = winner) else withSeqs
+
+        return if (winner != null) finalState else advanceTurn(finalState)
+    }
+
+    fun applyCraftRemove(state: GameState, move: Move.CraftRemove): GameState {
+        val player = state.players.first { it.id == move.playerId }
+        val chipsAfter = state.chips.remove(move.position)
+        val cardsToDiscard = listOf(move.card1, move.card2)
+        val handAfter = state.handOf(player).withoutAll(cardsToDiscard)
+        val (drawnCards, deckAfter) = drawCards(state.deck, cardsToDiscard.size)
+        val handFinal = handAfter.withAll(drawnCards)
+
+        val removed = state.copy(
+            hands = state.hands.plus(player.id to handFinal),
+            chips = chipsAfter,
+            deck = deckAfter,
+            discard = state.discard.plus(cardsToDiscard),
+            lastMove = move
+        )
+        return advanceTurn(removed)
+    }
+
+    fun applyDivineWipe(state: GameState, move: Move.DivineWipe): GameState {
+        val player = state.players.first { it.id == move.playerId }
+        val chipsAfter = state.chips.keepOnlyTeam(player.team)
+        val sequencesAfter = state.completedSequence.filter { it.team == player.team }
+        val handAfter = state.handOf(player).withoutAll(move.cards)
+        val (drawnCards, deckAfter) = drawCards(state.deck, move.cards.size)
+        val handFinal = handAfter.withAll(drawnCards)
+
+        val wiped = state.copy(
+            hands = state.hands.plus(player.id to handFinal),
+            chips = chipsAfter,
+            completedSequence = sequencesAfter,
+            deck = deckAfter,
+            discard = state.discard.plus(move.cards),
+            lastMove = move
+        )
+        return advanceTurn(wiped)
+    }
+
+    private fun drawCards(deck: Deck, count: Int): Pair<List<Card>, Deck> {
+        var currentDeck = deck
+        val drawn = mutableListOf<Card>()
+        repeat(count) {
+            val (card, nextDeck) = currentDeck.draw()
+            if (card != null) {
+                drawn.add(card)
+                currentDeck = nextDeck
+            }
+        }
+        return drawn to currentDeck
+    }
+
     fun legalMoves(state: GameState, playerId: PlayerId): List<Move> {
         if (state.winner != null) return emptyList()
         val player = state.players.firstOrNull { it.id == playerId } ?: return emptyList()
@@ -136,6 +215,43 @@ object GameEngine {
                 }
             }
         }
+
+        if (state.config.enableTacticalCrafting) {
+            val hand = state.handOf(player)
+            // Tactical: Straight Flush (Divine Wipe)
+            val sf = TacticalPatterns.findStraightFlush(hand)
+            if (sf != null) {
+                moves += Move.DivineWipe(player.id, sf)
+            }
+
+            // Tactical: Pairs -> CraftPlace
+            val pairs = TacticalPatterns.findPairs(hand)
+            if (pairs.isNotEmpty()) {
+                val openPositions = BoardPosition.all.filter { pos ->
+                    !state.board.isCorner(pos) && !state.chips.contains(pos)
+                }
+                for (pair in pairs) {
+                    for (pos in openPositions) {
+                        moves += Move.CraftPlace(player.id, pair.first, pair.second, pos)
+                    }
+                }
+            }
+
+            // Tactical: Suited Connectors -> CraftRemove
+            val connectors = TacticalPatterns.findSuitedConnectors(hand)
+            if (connectors.isNotEmpty()) {
+                val removablePositions = BoardPosition.all.filter { pos ->
+                    val chip = state.chips.at(pos)
+                    chip != null && chip != player.team && state.completedSequence.none { pos in it.positions }
+                }
+                for (conn in connectors) {
+                    for (pos in removablePositions) {
+                        moves += Move.CraftRemove(player.id, conn.first, conn.second, pos)
+                    }
+                }
+            }
+        }
+
         return moves
     }
 }

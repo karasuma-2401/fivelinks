@@ -22,12 +22,16 @@ class ActionCodec (
             is Move.Place -> ci * 100 + move.position.flatIndex
             is Move.Remove -> placeSize + ci * 100 + move.position.flatIndex
             is Move.SwapDeadCard -> placeSize + removeSize + ci
+            is Move.CraftPlace, is Move.CraftRemove, is Move.DivineWipe ->
+                throw UnsupportedOperationException("Crafting moves are not supported in classic Neural ActionCodec")
         }
     }
     fun legalMask (state: GameState, playerId: PlayerId): BooleanArray {
         val mask = BooleanArray(maxActions)
         for (move in GameEngine.legalMoves(state, playerId)) {
-            mask[encode(move)] = true
+            if (move is Move.Place || move is Move.Remove || move is Move.SwapDeadCard) {
+                mask[encode(move)] = true
+            }
         }
         return mask
     }

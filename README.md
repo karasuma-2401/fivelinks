@@ -43,6 +43,7 @@ fivelinks-cmp/
 ## 🚀 Hướng dẫn Cài đặt & Chạy Dự án
 
 ### Yêu cầu Tiên quyết (Prerequisites)
+
 - **JDK 17 hoặc JDK 21** (Khuyến nghị JDK 21).
 - **Android Studio** (Ladybug / Koala hoặc mới hơn) kèm Android SDK 36.
 - **Xcode** (nếu muốn build & chạy iOS trên macOS).
@@ -60,6 +61,7 @@ Khởi động Ktor HTTP server tại `http://localhost:8080`:
 ```
 
 Kiểm tra server đang chạy:
+
 - Truy cập trình duyệt hoặc curl: `http://localhost:8080/health` (Trả về: `Heath OK`)
 - Kiểm tra phiên bản protocol: `http://localhost:8080/protocol/version`
 - API nước đi AI: `POST http://localhost:8080/ai/move`
@@ -89,13 +91,15 @@ Kiểm tra server đang chạy:
 # Cài đặt trực tiếp lên thiết bị/giả lập Android đang kết nối
 ./gradlew :app:androidApp:installDebug
 ```
-*Hoặc mở thư mục dự án bằng Android Studio, chọn run configuration `app.androidApp` và bấm nút **Run ▶**.*
+
+_Hoặc mở thư mục dự án bằng Android Studio, chọn run configuration `app.androidApp` và bấm nút **Run ▶**._
 
 ---
 
 ### 4. Chạy Ứng dụng iOS
 
 Mở thư mục `app/iosApp` bằng Xcode trên macOS:
+
 1. Mở file `app/iosApp/iosApp.xcodeproj`.
 2. Chọn máy ảo iOS Simulator (ví dụ iPhone 16 Pro).
 3. Bấm **Cmd + R** để biên dịch và khởi chạy.
@@ -127,12 +131,15 @@ Dự án đi kèm bộ test toàn diện từ Domain, AI Engine, Server đến S
 Hệ thống AI sử dụng dữ liệu tự chơi (Self-play) để huấn luyện mạng nơ-ron đánh giá nước đi:
 
 1. **Sinh dữ liệu Self-Play từ Engine Kotlin:**
+
    ```bash
    ./gradlew :core:jvmTest --tests "com.karasuma.fivelinks.fivelinks_cmp.ai.SelfPlayRunnerTest" -Dselfplay.run=true -Dselfplay.games=1000
    ```
+
    Dữ liệu được lưu tại `ml/data/selfplay_dataset.jsonl`.
 
 2. **Huấn luyện mô hình PyTorch:**
+
    ```bash
    cd ml/train
    python train.py
@@ -143,3 +150,4 @@ Hệ thống AI sử dụng dữ liệu tự chơi (Self-play) để huấn luy�
    python export_onnx.py
    ```
    File `model_v1.onnx` sau đó được đồng bộ vào thư mục `core/src/jvmMain/resources/models/` và `core/src/androidMain/resources/models/`.
+   If you face any issues, please report them on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).

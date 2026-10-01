@@ -16,5 +16,7 @@ data class ChipMap(val chips: Map<Int, Team> = emptyMap()) {
 
     fun isEmpty(): Boolean = chips.isEmpty()
 
+    fun keepOnlyTeam(team: Team): ChipMap = ChipMap(chips.filterValues { it == team })
+
     val size: Int get() = chips.size
 }

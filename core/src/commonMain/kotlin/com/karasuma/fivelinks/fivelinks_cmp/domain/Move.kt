@@ -15,4 +15,32 @@ sealed interface Move {
 
     @Serializable
     data class SwapDeadCard(override val playerId: PlayerId, override val card: Card): Move
+
+    @Serializable
+    data class CraftPlace(
+        override val playerId: PlayerId,
+        val card1: Card,
+        val card2: Card,
+        val position: BoardPosition
+    ): Move {
+        override val card: Card get() = card1
+    }
+
+    @Serializable
+    data class CraftRemove(
+        override val playerId: PlayerId,
+        val card1: Card,
+        val card2: Card,
+        val position: BoardPosition
+    ): Move {
+        override val card: Card get() = card1
+    }
+
+    @Serializable
+    data class DivineWipe(
+        override val playerId: PlayerId,
+        val cards: List<Card>
+    ): Move {
+        override val card: Card get() = cards.first()
+    }
 }

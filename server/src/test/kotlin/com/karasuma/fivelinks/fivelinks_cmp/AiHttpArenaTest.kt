@@ -9,6 +9,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Move
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.model.AiMoveRequest
+import com.karasuma.fivelinks.fivelinks_cmp.model.AiMoveResponse
 import com.karasuma.fivelinks.fivelinks_cmp.model.NewGameRequest
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ProtocolJson
 import io.ktor.client.request.post
@@ -43,7 +44,7 @@ class AiHttpArenaTest {
 
     @Test
     fun httpArena_hard_matchesInProcessForSameSeeds() = testApplication {
-        application { module() }
+        application { module(HeuristicEvaluator(random = Random(0))) }
 
         suspend fun playViaHttp(seed: Long): Team? {
             val created = client.post("/game/new") {
@@ -69,7 +70,7 @@ class AiHttpArenaTest {
                     )
                 }
                 assertEquals(HttpStatusCode.OK, res.status, res.bodyAsText())
-                val move = ProtocolJson.decodeFromString(Move.serializer(), res.bodyAsText())
+                val move = ProtocolJson.decodeFromString(AiMoveResponse.serializer(), res.bodyAsText()).move
                 state = GameEngine.applyMove(state, move).getOrThrow()
             }
             return state.winner

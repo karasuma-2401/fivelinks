@@ -98,6 +98,24 @@ class HeuristicEvaluator(
             is Move.SwapDeadCard -> {
                 score += weights.swapDeadCard
             }
+            is Move.CraftPlace -> {
+                score += extensionAround(after, move.position, myTeam) * weights.extendSelfPerChip
+                score += blockingAround(state, move.position, oppTeams) *
+                        weights.blockOpponentPerChip * weights.defensiveMultiplier
+                score += centerBias(move.position) * weights.centerControl
+                score += adjacentCornerCount(move.position) * weights.cornerAdjacency
+                if (newSeqs == 0 && afterMyOpen4 == beforeMyOpen4) {
+                    score += weights.wasteWildJack
+                }
+            }
+            is Move.CraftRemove -> {
+                score += centerBias(move.position) * weights.centerControl
+                val wasThreat = (beforeOppOpen4 - afterOppOpen4) > 0
+                if (!wasThreat) score += weights.wasteRemoveJack
+            }
+            is Move.DivineWipe -> {
+                score += 500_000.0
+            }
         }
         return score
     }
