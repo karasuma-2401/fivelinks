@@ -52,6 +52,7 @@ fun HandView(
     }
 
     val singleSelectedIndex = if (selectedIndices.size == 1) selectedIndices.first() else null
+    val deadCardIndex = singleSelectedIndex?.takeIf { isCardDead(hand[it]) }
 
     Column(
         modifier = modifier
@@ -86,10 +87,10 @@ fun HandView(
         }
 
         // Action button for dead card swap if selected
-        if (singleSelectedIndex != null && isCardDead(hand[singleSelectedIndex])) {
+        if (deadCardIndex != null) {
             Spacer(modifier = Modifier.height(4.dp))
             Button(
-                onClick = { onSwapDeadCard(singleSelectedIndex) },
+                onClick = { onSwapDeadCard(deadCardIndex) },
                 colors = ButtonDefaults.buttonColors(containerColor = TeamRed),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.height(34.dp)
