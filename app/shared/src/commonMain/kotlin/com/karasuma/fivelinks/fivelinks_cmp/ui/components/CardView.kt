@@ -9,10 +9,12 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -80,28 +82,29 @@ fun HandCardView(
             .width(52.dp)
             .height(82.dp)
     ) {
-        // Top-left Rank & Suit
+        // Top-left Rank & Vector Suit
         Column(
             modifier = Modifier.align(Alignment.TopStart),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = card.rank.shortName(),
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Black,
                 color = card.suit.color(),
-                lineHeight = 15.sp
+                lineHeight = 14.sp,
+                maxLines = 1,
+                softWrap = false
             )
-            Text(
-                text = card.suit.symbol(),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = card.suit.color(),
-                lineHeight = 11.sp
+            Spacer(modifier = Modifier.height(1.dp))
+            SuitVector(
+                suit = card.suit,
+                modifier = Modifier.size(10.dp),
+                color = card.suit.color()
             )
         }
 
-        // Center: Large authentic Suit watermark or Jack label
+        // Center: Vector Suit Watermark or Jack badge
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -140,16 +143,16 @@ fun HandCardView(
                     }
                 }
                 else -> {
-                    Text(
-                        text = card.suit.symbol(),
-                        fontSize = 24.sp,
+                    SuitVector(
+                        suit = card.suit,
+                        modifier = Modifier.size(24.dp),
                         color = card.suit.color().copy(alpha = 0.85f)
                     )
                 }
             }
         }
 
-        // Bottom-right Inverted Rank & Suit
+        // Bottom-right Inverted Rank & Vector Suit
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -158,17 +161,18 @@ fun HandCardView(
         ) {
             Text(
                 text = card.rank.shortName(),
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Black,
                 color = card.suit.color(),
-                lineHeight = 14.sp
+                lineHeight = 13.sp,
+                maxLines = 1,
+                softWrap = false
             )
-            Text(
-                text = card.suit.symbol(),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = card.suit.color(),
-                lineHeight = 10.sp
+            Spacer(modifier = Modifier.height(1.dp))
+            SuitVector(
+                suit = card.suit,
+                modifier = Modifier.size(9.dp),
+                color = card.suit.color()
             )
         }
 
@@ -177,7 +181,7 @@ fun HandCardView(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f)),
+                    .background(Color.Black.copy(alpha = 0.55f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -197,23 +201,26 @@ fun BoardCellCardView(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(1.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = card.rank.shortName(),
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             color = card.suit.color(),
-            lineHeight = 12.sp
+            lineHeight = 11.sp,
+            maxLines = 1,
+            softWrap = false
         )
-        Text(
-            text = card.suit.symbol(),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = card.suit.color(),
-            lineHeight = 12.sp
+        Spacer(modifier = Modifier.height(1.5.dp))
+        SuitVector(
+            suit = card.suit,
+            modifier = Modifier.size(9.dp),
+            color = card.suit.color()
         )
     }
 }

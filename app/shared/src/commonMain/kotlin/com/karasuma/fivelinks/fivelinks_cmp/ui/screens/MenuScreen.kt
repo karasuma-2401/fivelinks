@@ -266,9 +266,14 @@ fun MenuScreen(
                     val config = baseConfig.copy(sequenceToWin = sequenceToWin)
 
                     val players = if (opponentType == OpponentType.AI) {
+                        val diffLabel = when (aiDifficulty) {
+                            Difficulty.EASY -> "Dễ"
+                            Difficulty.MEDIUM -> "Vừa"
+                            Difficulty.HARD -> "Khó"
+                        }
                         listOf(
                             Player(id = "p0", name = "Người chơi", team = Team.BLUE, isAi = false),
-                            Player(id = "p1", name = "AI ()", team = Team.RED, isAi = true)
+                            Player(id = "p1", name = "AI ($diffLabel)", team = Team.RED, isAi = true)
                         )
                     } else {
                         listOf(

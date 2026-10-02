@@ -108,7 +108,8 @@ fun GameOverDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Số Sequence hoàn thành:", fontSize = 12.sp, color = TextSecondary)
-                        Text(" hàng", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        val seqCount = winner?.let { gameState.sequencesOf(it) } ?: 0
+                        Text("$seqCount hàng", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
@@ -116,7 +117,7 @@ fun GameOverDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Tổng số lượt đấu:", fontSize = 12.sp, color = TextSecondary)
-                        Text(" lượt", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text("${gameState.turnNumber} lượt", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
                 }
 

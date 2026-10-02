@@ -45,7 +45,8 @@ fun BoardGrid(
         contentAlignment = Alignment.Center
     ) {
         val shape = RoundedCornerShape(14.dp)
-        val boardDim = if (maxHeight in 1.dp..maxWidth) maxHeight else maxWidth
+        val minDim = if (maxWidth > 10.dp && maxHeight > 10.dp) minOf(maxWidth, maxHeight) else if (maxWidth > 10.dp) maxWidth else 320.dp
+        val boardDim = minDim
 
         Box(
             modifier = Modifier
