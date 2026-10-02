@@ -60,7 +60,7 @@ fun RulesDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "📖 LUẬT CHƠI FIVELINKS",
+                    text = "HƯỚNG DẪN LUẬT CHƠI",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
                     color = GoldAccent
@@ -88,15 +88,15 @@ fun RulesDialog(
                     title = "2. Cơ Chế Chiến Thuật Mới (Tactical Mode)",
                     color = GoldAccent
                 ) {
-                    Text("⚡ Ghép Đôi (Pair - 2 lá cùng số):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TeamBlueGlow)
+                    Text("Ghép Đôi (Pair - 2 lá cùng số):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TeamBlueGlow)
                     Text("Tạo ra Jack 2 Mắt nhân tạo ➔ Đặt 1 quân vào bất kỳ ô trống nào (bỏ 2 lá, rút 2 lá mới).", fontSize = 11.sp, color = Color(0xFFE2E8F0))
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("🎯 Suited Connector (2 lá liên tiếp đồng chất):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TeamRedGlow)
+                    Text("Suited Connector (2 lá liên tiếp đồng chất):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TeamRedGlow)
                     Text("Tạo ra Jack 1 Mắt nhân tạo ➔ Bắn tỉa 1 quân cờ của đối thủ chưa khóa (bỏ 2 lá, rút 2 lá mới).", fontSize = 11.sp, color = Color(0xFFE2E8F0))
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("👑 Thiên Phạt Hoàng Kim (Straight Flush 5 lá):", fontSize = 11.sp, fontWeight = FontWeight.Black, color = GoldAccent)
+                    Text("Thiên Phạt Hoàng Kim (Straight Flush 5 lá):", fontSize = 11.sp, fontWeight = FontWeight.Black, color = GoldAccent)
                     Text("Khi sở hữu sảnh 5 lá đồng chất liên tiếp ➔ Kích hoạt chiêu thức Huyền Thoại: Xóa sạch toàn bộ quân cờ và hàng khóa của đối phương trên bàn cờ!", fontSize = 11.sp, color = Color(0xFFFDE68A))
                 }
 

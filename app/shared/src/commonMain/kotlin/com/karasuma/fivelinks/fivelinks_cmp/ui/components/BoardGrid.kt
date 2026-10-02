@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,21 +41,22 @@ fun BoardGrid(
     val lockedPositions = gameState.completedSequence.flatMap { it.positions }.toSet()
 
     BoxWithConstraints(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        val shape = RoundedCornerShape(16.dp)
+        val shape = RoundedCornerShape(14.dp)
+        val boardDim = if (maxHeight in 1.dp..maxWidth) maxHeight else maxWidth
 
         Box(
             modifier = Modifier
-                .padding(vertical = 4.dp, horizontal = 2.dp)
-                .aspectRatio(1f)
-                .shadow(16.dp, shape)
+                .size(boardDim)
+                .padding(4.dp)
+                .shadow(12.dp, shape)
                 .clip(shape)
                 .background(BoardContainerBg)
-                .padding(6.dp)
+                .padding(4.dp)
         ) {
-            Column(modifier = Modifier.aspectRatio(1f)) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 for (r in 0 until 10) {
                     Row(
                         modifier = Modifier

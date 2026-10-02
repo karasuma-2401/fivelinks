@@ -108,30 +108,33 @@ fun HandCardView(
         ) {
             when {
                 card.isOneEyedJack() -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "🎯",
-                            fontSize = 14.sp
-                        )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(TeamRed.copy(alpha = 0.12f))
+                            .border(1.dp, TeamRed.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                    ) {
                         Text(
                             text = "SNIPE",
                             fontSize = 8.sp,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.ExtraBold,
                             color = TeamRed
                         )
                     }
                 }
                 card.isTwoEyedJack() -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "★",
-                            fontSize = 15.sp,
-                            color = GoldAccent
-                        )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(TeamBlue.copy(alpha = 0.12f))
+                            .border(1.dp, TeamBlue.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                    ) {
                         Text(
                             text = "WILD",
                             fontSize = 8.sp,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.ExtraBold,
                             color = TeamBlue
                         )
                     }

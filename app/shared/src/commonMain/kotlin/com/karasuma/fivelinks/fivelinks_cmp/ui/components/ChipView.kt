@@ -96,13 +96,5 @@ fun ChipView(
                 )
             }
         }
-
-        // Lock Icon if Locked
-        if (isLocked) {
-            Text(
-                text = "🔒",
-                fontSize = (size.value * 0.35f).sp
-            )
-        }
     }
 }

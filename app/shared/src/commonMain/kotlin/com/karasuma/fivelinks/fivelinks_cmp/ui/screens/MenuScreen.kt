@@ -1,5 +1,6 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,8 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,12 +45,11 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.RulesDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BackgroundDark
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldGlow
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.SurfaceDark
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.SurfaceElevated
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamBlue
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamBlueGlow
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamRed
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TextPrimary
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TextSecondary
 
 enum class OpponentType {
     AI,
@@ -67,6 +64,7 @@ fun MenuScreen(
     var opponentType by remember { mutableStateOf(OpponentType.AI) }
     var aiDifficulty by remember { mutableStateOf(Difficulty.MEDIUM) }
     var enableTactical by remember { mutableStateOf(true) }
+    var sequenceToWin by remember { mutableStateOf(2) }
     var showRules by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
@@ -85,35 +83,40 @@ fun MenuScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // App Title & Logo
+            // App Title & Tagline
             Text(
                 text = "FIVELINKS",
-                fontSize = 36.sp,
+                fontSize = 34.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 4.sp,
                 color = GoldAccent
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Cờ Nối 5 Lá • Sequence Chiến Thuật & AI",
-                fontSize = 13.sp,
-                color = Color(0xFF94A3B8),
+                text = "Sequence Chiến Thuật & AI",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.sp,
+                color = TextSecondary,
                 textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Game Mode Card
+            // Section 1: Game Mode Card
             Card(
                 modifier = Modifier.fillMaxWidth(0.92f),
                 colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                border = BorderStroke(1.dp, SurfaceElevated),
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "CHẾ ĐỘ ĐỐI THỦ",
-                        fontSize = 12.sp,
+                        text = "ĐỐI THỦ",
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF94A3B8)
+                        letterSpacing = 1.sp,
+                        color = TextSecondary
                     )
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -121,14 +124,14 @@ fun MenuScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        ModeSelectButton(
-                            text = "🤖 Đấu Với AI",
+                        OptionButton(
+                            text = "Đấu với AI",
                             isSelected = opponentType == OpponentType.AI,
                             onClick = { opponentType = OpponentType.AI },
                             modifier = Modifier.weight(1f)
                         )
-                        ModeSelectButton(
-                            text = "👥 2 Người (Local)",
+                        OptionButton(
+                            text = "Chơi 2 người",
                             isSelected = opponentType == OpponentType.LOCAL_PASS_AND_PLAY,
                             onClick = { opponentType = OpponentType.LOCAL_PASS_AND_PLAY },
                             modifier = Modifier.weight(1f)
@@ -140,9 +143,10 @@ fun MenuScreen(
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
                             text = "ĐỘ KHÓ AI",
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF94A3B8)
+                            letterSpacing = 1.sp,
+                            color = TextSecondary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(
@@ -167,12 +171,52 @@ fun MenuScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Rules & Tactical Toggle Card
+            // Section 2: Winning Target Card
             Card(
                 modifier = Modifier.fillMaxWidth(0.92f),
                 colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                border = BorderStroke(1.dp, SurfaceElevated),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "MỤC TIÊU CHIẾN THẮNG",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OptionButton(
+                            text = "1 Hàng (Nhanh)",
+                            isSelected = sequenceToWin == 1,
+                            onClick = { sequenceToWin = 1 },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OptionButton(
+                            text = "2 Hàng (Tiêu chuẩn)",
+                            isSelected = sequenceToWin == 2,
+                            onClick = { sequenceToWin = 2 },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Section 3: Tactical Rules Toggle Card
+            Card(
+                modifier = Modifier.fillMaxWidth(0.92f),
+                colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                border = BorderStroke(1.dp, SurfaceElevated),
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -183,15 +227,16 @@ fun MenuScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "⚡ Chế Độ Chiến Thuật (Tactical)",
+                                text = "Chế độ chiến thuật",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = TextPrimary
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Ghép đôi (Wild), Suited connector (Bắn tỉa), Thiên Phạt",
+                                text = "Ghép đôi (Wild), Đồng chất liền kề (Snipe), Thiên Phạt",
                                 fontSize = 11.sp,
-                                color = Color(0xFF94A3B8)
+                                color = TextSecondary
                             )
                         }
                         Switch(
@@ -199,27 +244,31 @@ fun MenuScreen(
                             onCheckedChange = { enableTactical = it },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.Black,
-                                checkedTrackColor = GoldAccent
+                                checkedTrackColor = GoldAccent,
+                                uncheckedThumbColor = TextSecondary,
+                                uncheckedTrackColor = SurfaceElevated
                             )
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Start Game Button
             Button(
                 onClick = {
-                    val config = if (enableTactical) {
+                    val baseConfig = if (enableTactical) {
                         GameConfig.tactical(playerCount = 2, teams = 2)
                     } else {
                         GameConfig.soloVsAi()
                     }
+                    val config = baseConfig.copy(sequenceToWin = sequenceToWin)
+
                     val players = if (opponentType == OpponentType.AI) {
                         listOf(
                             Player(id = "p0", name = "Người chơi", team = Team.BLUE, isAi = false),
-                            Player(id = "p1", name = "AI Bot (${aiDifficulty.name})", team = Team.RED, isAi = true)
+                            Player(id = "p1", name = "AI ()", team = Team.RED, isAi = true)
                         )
                     } else {
                         listOf(
@@ -233,12 +282,13 @@ fun MenuScreen(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth(0.92f)
-                    .height(52.dp)
+                    .height(50.dp)
             ) {
                 Text(
-                    text = "VÀO VÁN ĐẤU 🎮",
-                    fontSize = 16.sp,
+                    text = "BẮT ĐẦU TRẬN ĐẤU",
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp,
                     color = Color.Black
                 )
             }
@@ -248,15 +298,17 @@ fun MenuScreen(
             // View Rules Button
             OutlinedButton(
                 onClick = { showRules = true },
+                border = BorderStroke(1.dp, SurfaceElevated),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth(0.92f)
                     .height(44.dp)
             ) {
                 Text(
-                    text = "📖 Xem Hướng Dẫn Luật Chơi",
+                    text = "Hướng dẫn luật chơi",
                     fontSize = 13.sp,
-                    color = Color(0xFFCBD5E1)
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextSecondary
                 )
             }
         }
@@ -268,7 +320,7 @@ fun MenuScreen(
 }
 
 @Composable
-private fun ModeSelectButton(
+private fun OptionButton(
     text: String,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -280,8 +332,8 @@ private fun ModeSelectButton(
             .clip(shape)
             .background(if (isSelected) TeamBlue else SurfaceElevated)
             .border(
-                width = if (isSelected) 1.5.dp else 0.dp,
-                color = if (isSelected) TeamBlueGlow else Color.Transparent,
+                width = if (isSelected) 1.dp else 0.dp,
+                color = if (isSelected) GoldAccent else Color.Transparent,
                 shape = shape
             )
             .clickable(onClick = onClick)
@@ -292,7 +344,7 @@ private fun ModeSelectButton(
             text = text,
             fontSize = 12.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) Color.White else Color(0xFFCBD5E1),
+            color = if (isSelected) Color.White else TextSecondary,
             textAlign = TextAlign.Center
         )
     }
@@ -318,7 +370,7 @@ private fun DifficultyButton(
             text = text,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = if (isSelected) Color.Black else Color(0xFFCBD5E1)
+            color = if (isSelected) Color.Black else TextSecondary
         )
     }
 }

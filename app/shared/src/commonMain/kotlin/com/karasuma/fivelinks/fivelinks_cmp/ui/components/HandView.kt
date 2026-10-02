@@ -77,7 +77,7 @@ fun HandView(
                     .padding(bottom = 4.dp)
             ) {
                 Text(
-                    text = "♻ Đổi bài chết (Rút lá mới)",
+                    text = "Đổi bài chết",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

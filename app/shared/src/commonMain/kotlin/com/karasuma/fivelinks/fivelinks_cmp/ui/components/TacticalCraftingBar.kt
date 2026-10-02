@@ -99,7 +99,7 @@ fun TacticalCraftingBar(
                             )
                         }
                         Text(
-                            text = "WILD ★",
+                            text = "WILD",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = GoldAccent
@@ -138,7 +138,7 @@ fun TacticalCraftingBar(
                             )
                         }
                         Text(
-                            text = "SNIPE 🎯",
+                            text = "SNIPE",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = TeamRed

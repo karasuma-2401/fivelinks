@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +34,9 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BackgroundDark
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.SurfaceDark
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamBlue
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TextPrimary
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TextSecondary
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TurnBadgeBg
@@ -68,7 +73,7 @@ fun GameHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left: "Your turn" + "DECK 80   TURN 10" (matching reference screenshot)
+        // Left: "Your turn" + "DECK 80   TURN 10" + sequence score dots
         Column {
             Text(
                 text = if (currentPlayer.isAi) "AI Turn" else "Your turn",
@@ -81,34 +86,58 @@ fun GameHeader(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "DECK $deckCount",
+                    text = "DECK ",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextSecondary
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
-                    text = "TURN $turnNumber",
+                    text = "TURN ",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextSecondary
                 )
                 Spacer(modifier = Modifier.width(14.dp))
 
-                // Sequence scores: 🔵 1/2 vs 🔴 0/2
+                // Sequence scores: TeamBlue count vs TeamRed count with native colored dots
                 val target = gameState.config.sequenceToWin
                 val blueCount = gameState.sequencesOf(Team.BLUE)
                 val redCount = gameState.sequencesOf(Team.RED)
-                Text(
-                    text = "🔵 $blueCount/$target  🔴 $redCount/$target",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextSecondary
-                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(TeamBlue)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "/",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(TeamRed)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "/",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextSecondary
+                    )
+                }
             }
         }
 
-        // Right: Pill Badge "YOUR TURN" / "AI THINKING" + Buttons
+        // Right: Pill Badge "YOUR TURN" / "AI THINKING" + Sleek Action Buttons
         Row(verticalAlignment = Alignment.CenterVertically) {
             val badgeShape = RoundedCornerShape(12.dp)
             Box(
@@ -128,49 +157,59 @@ fun GameHeader(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            // Subtle Action Buttons
+            // Rules button
             Text(
-                text = "📖",
-                fontSize = 15.sp,
+                text = "Luật",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextSecondary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
+                    .background(SurfaceDark)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = onRulesClick
                     )
-                    .padding(4.dp)
+                    .padding(horizontal = 7.dp, vertical = 5.dp)
             )
 
             Spacer(modifier = Modifier.width(4.dp))
 
+            // Restart button
             Text(
-                text = "🔄",
-                fontSize = 15.sp,
+                text = "Lại",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextSecondary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
+                    .background(SurfaceDark)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = onRestartClick
                     )
-                    .padding(4.dp)
+                    .padding(horizontal = 7.dp, vertical = 5.dp)
             )
 
             Spacer(modifier = Modifier.width(4.dp))
 
+            // Menu button
             Text(
-                text = "☰",
-                fontSize = 18.sp,
+                text = "Menu",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
+                    .background(SurfaceDark)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = onMenuClick
                     )
-                    .padding(4.dp)
+                    .padding(horizontal = 7.dp, vertical = 5.dp)
             )
         }
     }
