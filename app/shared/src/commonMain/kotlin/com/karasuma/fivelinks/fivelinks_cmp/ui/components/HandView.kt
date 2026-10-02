@@ -4,14 +4,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -24,13 +28,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Hand
 import com.karasuma.fivelinks.fivelinks_cmp.domain.isJack
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.SurfaceDark
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BackgroundDark
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamRed
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TextPrimary
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.primaryColor
 
 @Composable
 fun HandView(
@@ -41,9 +47,8 @@ fun HandView(
     onSwapDeadCard: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scrollState = rememberScrollState()
+    val currentPlayer = gameState.currentPlayer
 
-    // Helper to check if a specific card in hand is dead
     fun isCardDead(card: Card): Boolean {
         if (card.isJack()) return false
         val positions = gameState.board.positionsOf(card)
@@ -57,51 +62,99 @@ fun HandView(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            .background(SurfaceDark.copy(alpha = 0.95f))
-            .padding(vertical = 8.dp, horizontal = 12.dp),
+            .background(BackgroundDark)
+            .padding(top = 8.dp, bottom = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Hand cards horizontal row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(scrollState)
-                .padding(vertical = 6.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            hand.cards.forEachIndexed { index, card ->
-                val isSelected = index in selectedIndices
-                val isDead = isCardDead(card)
-
-                HandCardView(
-                    card = card,
-                    isSelected = isSelected,
-                    isDead = isDead,
-                    isCraftHighlight = isSelected && selectedIndices.size >= 2,
-                    onClick = { onCardClick(index) },
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
-        }
-
-        // Action button for dead card swap if selected
+        // Dead card swap action button
         if (deadCardIndex != null) {
-            Spacer(modifier = Modifier.height(4.dp))
             Button(
                 onClick = { onSwapDeadCard(deadCardIndex) },
                 colors = ButtonDefaults.buttonColors(containerColor = TeamRed),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.height(34.dp)
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .height(32.dp)
+                    .padding(bottom = 4.dp)
             ) {
                 Text(
                     text = "♻ Đổi bài chết (Rút lá mới)",
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
             }
+        }
+
+        // Fanned Overlapping Playing Cards
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(104.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            val totalCards = hand.cards.size
+            val cardWidth = 52.dp
+            val cardHeight = 82.dp
+
+            if (totalCards > 0) {
+                // Calculate step distance between cards so they overlap like physical cards
+                val availableWidth = maxWidth - cardWidth - 24.dp
+                val idealStep = 38.dp // ~14dp overlap
+                val step = if (availableWidth > 0.dp && (totalCards - 1) > 0) {
+                    val fitStep = availableWidth / (totalCards - 1)
+                    if (fitStep < idealStep) fitStep else idealStep
+                } else idealStep
+
+                val totalHandWidth = cardWidth + step * (totalCards - 1)
+                val startX = (maxWidth - totalHandWidth) / 2
+
+                Box(modifier = Modifier.fillMaxWidth().height(104.dp)) {
+                    hand.cards.forEachIndexed { index, card ->
+                        val isSelected = index in selectedIndices
+                        val isDead = isCardDead(card)
+                        val posX = startX + (step * index)
+
+                        Box(
+                            modifier = Modifier
+                                .offset(x = posX)
+                                .align(Alignment.BottomStart)
+                                .zIndex(if (isSelected) 50f else index.toFloat())
+                        ) {
+                            HandCardView(
+                                card = card,
+                                isSelected = isSelected,
+                                isDead = isDead,
+                                isCraftHighlight = isSelected && selectedIndices.size >= 2,
+                                onClick = { onCardClick(index) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Bottom Player Indicator Bar (matching reference image)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(currentPlayer.team.primaryColor())
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = currentPlayer.name,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
         }
     }
 }

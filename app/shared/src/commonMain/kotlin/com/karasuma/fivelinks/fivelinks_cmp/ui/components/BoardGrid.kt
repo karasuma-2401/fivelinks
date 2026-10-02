@@ -1,7 +1,6 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -16,12 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import com.karasuma.fivelinks.fivelinks_cmp.domain.BoardPosition
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Move
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BoardBackground
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BoardContainerBg
 
 @Composable
 fun BoardGrid(
@@ -45,18 +42,16 @@ fun BoardGrid(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
-        val boardSize = min(maxWidth, maxHeight.takeIf { it.value > 0 } ?: maxWidth)
-        val shape = RoundedCornerShape(10.dp)
+        val shape = RoundedCornerShape(16.dp)
 
         Box(
             modifier = Modifier
-                .padding(4.dp)
+                .padding(vertical = 4.dp, horizontal = 2.dp)
                 .aspectRatio(1f)
-                .shadow(12.dp, shape)
+                .shadow(16.dp, shape)
                 .clip(shape)
-                .background(BoardBackground)
-                .border(2.dp, GoldAccent.copy(alpha = 0.5f), shape)
-                .padding(4.dp)
+                .background(BoardContainerBg)
+                .padding(6.dp)
         ) {
             Column(modifier = Modifier.aspectRatio(1f)) {
                 for (r in 0 until 10) {

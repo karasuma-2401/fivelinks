@@ -65,6 +65,7 @@ fun GameScreen(
                 gameState = uiState.gameState,
                 isAiThinking = uiState.isAiThinking,
                 onRestartClick = { viewModel.startNewGame() },
+                onRulesClick = { showRules = true },
                 onMenuClick = onExitToMenu
             )
 

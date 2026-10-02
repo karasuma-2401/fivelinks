@@ -32,16 +32,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldGlow
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.SurfaceDark
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamBlueGlow
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamRedGlow
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.SurfaceElevated
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamBlue
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamRed
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TextPrimary
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TextSecondary
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.TacticalAction
 
 @Composable
@@ -74,17 +74,10 @@ fun TacticalCraftingBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp)
-                        .shadow(8.dp, shape)
+                        .shadow(6.dp, shape)
                         .clip(shape)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color(0xFF1E3A8A).copy(alpha = 0.9f),
-                                    Color(0xFF0F172A).copy(alpha = 0.95f)
-                                )
-                            )
-                        )
-                        .border(1.5.dp, TeamBlueGlow.copy(alpha = pulseAlpha), shape)
+                        .background(SurfaceElevated)
+                        .border(1.5.dp, TeamBlue.copy(alpha = pulseAlpha), shape)
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Row(
@@ -94,19 +87,19 @@ fun TacticalCraftingBar(
                     ) {
                         Column {
                             Text(
-                                text = "⚡ GHÉP ĐÔI: JACK 2 MẮT",
+                                text = "Ghép Đôi: Jack 2 Mắt (Wild)",
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = TeamBlueGlow
+                                fontWeight = FontWeight.Bold,
+                                color = TeamBlue
                             )
                             Text(
-                                text = "Nhấp vào bất kỳ ô trống nào trên bàn để đặt quân!",
+                                text = "Nhấp vào ô trống trên bàn để đặt quân",
                                 fontSize = 11.sp,
-                                color = Color(0xFFCBD5E1)
+                                color = TextSecondary
                             )
                         }
                         Text(
-                            text = "👑 WILD",
+                            text = "WILD ★",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = GoldAccent
@@ -120,17 +113,10 @@ fun TacticalCraftingBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp)
-                        .shadow(8.dp, shape)
+                        .shadow(6.dp, shape)
                         .clip(shape)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color(0xFF881337).copy(alpha = 0.9f),
-                                    Color(0xFF0F172A).copy(alpha = 0.95f)
-                                )
-                            )
-                        )
-                        .border(1.5.dp, TeamRedGlow.copy(alpha = pulseAlpha), shape)
+                        .background(SurfaceElevated)
+                        .border(1.5.dp, TeamRed.copy(alpha = pulseAlpha), shape)
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Row(
@@ -140,22 +126,22 @@ fun TacticalCraftingBar(
                     ) {
                         Column {
                             Text(
-                                text = "🎯 SUITED CONNECTOR: JACK 1 MẮT",
+                                text = "Đồng Chất Liền Kề: Jack 1 Mắt (Snipe)",
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = TeamRedGlow
+                                fontWeight = FontWeight.Bold,
+                                color = TeamRed
                             )
                             Text(
-                                text = "Nhấp vào 1 quân cờ đối thủ (chưa khóa) để bắn tỉa!",
+                                text = "Nhấp vào 1 chip đối thủ chưa khóa để bắn tỉa",
                                 fontSize = 11.sp,
-                                color = Color(0xFFCBD5E1)
+                                color = TextSecondary
                             )
                         }
                         Text(
-                            text = "💥 SNIPE",
+                            text = "SNIPE 🎯",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TeamRedGlow
+                            color = TeamRed
                         )
                     }
                 }
@@ -165,19 +151,12 @@ fun TacticalCraftingBar(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                        .shadow(14.dp, shape)
+                        .padding(horizontal = 14.dp, vertical = 4.dp)
+                        .shadow(10.dp, shape)
                         .clip(shape)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color(0xFF78350F).copy(alpha = 0.95f),
-                                    Color(0xFF451A03).copy(alpha = 0.95f)
-                                )
-                            )
-                        )
-                        .border(2.dp, GoldGlow.copy(alpha = pulseAlpha), shape)
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                        .background(SurfaceElevated)
+                        .border(1.5.dp, GoldAccent.copy(alpha = pulseAlpha), shape)
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -186,15 +165,15 @@ fun TacticalCraftingBar(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "👑 THIÊN PHẠT HOÀNG KIM 👑",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Black,
-                                color = GoldGlow
+                                text = "Thiên Phạt Hoàng Kim (Divine Wipe)",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldAccent
                             )
                             Text(
-                                text = "Sảnh 5 lá đồng chất: Xóa sạch toàn bộ quân cờ của đối thủ!",
+                                text = "Sảnh 5 lá đồng chất: Xóa sạch toàn bộ chip đối thủ",
                                 fontSize = 11.sp,
-                                color = Color.White
+                                color = TextSecondary
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -202,12 +181,12 @@ fun TacticalCraftingBar(
                             onClick = onTriggerDivineWipe,
                             colors = ButtonDefaults.buttonColors(containerColor = GoldAccent),
                             shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(36.dp)
+                            modifier = Modifier.height(34.dp)
                         ) {
                             Text(
                                 text = "KÍCH HOẠT",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Black,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
                         }

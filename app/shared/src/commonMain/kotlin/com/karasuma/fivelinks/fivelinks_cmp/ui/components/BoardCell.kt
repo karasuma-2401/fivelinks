@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.dp
 import com.karasuma.fivelinks.fivelinks_cmp.domain.BoardPosition
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.CellBackground
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.CellBorder
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BoardCellBg
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BoardCellBorder
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.HighlightAttack
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.HighlightValid
 
@@ -46,7 +46,7 @@ fun BoardCell(
 ) {
     val infiniteTransition = rememberInfiniteTransition()
     val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
+        initialValue = 0.4f,
         targetValue = 0.95f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 700, easing = FastOutSlowInEasing),
@@ -59,24 +59,24 @@ fun BoardCell(
     val borderColor = when {
         isValidPlacement -> HighlightValid.copy(alpha = pulseAlpha)
         isValidSnipeTarget -> HighlightAttack.copy(alpha = pulseAlpha)
-        else -> CellBorder.copy(alpha = 0.7f)
+        else -> BoardCellBorder.copy(alpha = 0.8f)
     }
 
     val borderWidth = when {
-        isValidPlacement || isValidSnipeTarget -> 2.dp
-        else -> 0.75.dp
+        isValidPlacement || isValidSnipeTarget -> 1.75.dp
+        else -> 0.5.dp
     }
 
     val bgModifier = when {
-        isValidPlacement -> Modifier.background(HighlightValid.copy(alpha = pulseAlpha * 0.25f))
-        isValidSnipeTarget -> Modifier.background(HighlightAttack.copy(alpha = pulseAlpha * 0.25f))
-        else -> Modifier.background(CellBackground)
+        isValidPlacement -> Modifier.background(HighlightValid.copy(alpha = pulseAlpha * 0.2f))
+        isValidSnipeTarget -> Modifier.background(HighlightAttack.copy(alpha = pulseAlpha * 0.2f))
+        else -> Modifier.background(BoardCellBg)
     }
 
     Box(
         modifier = modifier
             .aspectRatio(1f)
-            .padding(1.dp)
+            .padding(0.75.dp)
             .clip(shape)
             .then(bgModifier)
             .border(borderWidth, borderColor, shape)
@@ -93,13 +93,13 @@ fun BoardCell(
             BoardCellCardView(card = card)
         }
 
-        // Chip on top of the card
+        // Frosted Chip on top of the card (underlying card remains visible)
         if (chipTeam != null) {
             ChipView(
                 team = chipTeam,
                 isLocked = isLockedSequence,
                 isLastMove = isLastMove,
-                modifier = Modifier.fillMaxSize(0.85f)
+                modifier = Modifier.fillMaxSize(0.88f)
             )
         }
     }
