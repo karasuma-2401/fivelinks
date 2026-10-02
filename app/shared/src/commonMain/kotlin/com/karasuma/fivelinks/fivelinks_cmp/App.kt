@@ -1,47 +1,61 @@
 package com.karasuma.fivelinks.fivelinks_cmp
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import org.jetbrains.compose.resources.painterResource
+import com.karasuma.fivelinks.fivelinks_cmp.ai.Difficulty
+import com.karasuma.fivelinks.fivelinks_cmp.domain.GameConfig
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
+import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.GameScreen
+import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.MenuScreen
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BackgroundDark
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
+import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameViewModel
 
-import fivelinks_cmp.app.shared.generated.resources.Res
-import fivelinks_cmp.app.shared.generated.resources.compose_multiplatform
+enum class AppScreen {
+    MENU,
+    GAME
+}
 
 @Composable
-@Preview
 fun App() {
-    MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+    FiveLinksTheme {
+        var currentScreen by remember { mutableStateOf(AppScreen.MENU) }
+        var activeViewModel by remember { mutableStateOf<GameViewModel?>(null) }
+
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = BackgroundDark
         ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
+            when (currentScreen) {
+                AppScreen.MENU -> {
+                    MenuScreen(
+                        onStartGame = { config, players, difficulty ->
+                            activeViewModel = GameViewModel(
+                                initialConfig = config,
+                                initialPlayers = players,
+                                aiDifficulty = difficulty
+                            )
+                            currentScreen = AppScreen.GAME
+                        }
+                    )
+                }
+
+                AppScreen.GAME -> {
+                    val vm = activeViewModel ?: remember {
+                        GameViewModel()
+                    }
+                    GameScreen(
+                        viewModel = vm,
+                        onExitToMenu = {
+                            currentScreen = AppScreen.MENU
+                        }
+                    )
                 }
             }
         }

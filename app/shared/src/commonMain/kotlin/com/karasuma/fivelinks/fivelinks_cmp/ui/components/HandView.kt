@@ -52,7 +52,6 @@ fun HandView(
     }
 
     val singleSelectedIndex = if (selectedIndices.size == 1) selectedIndices.first() else null
-    val selectedIsDead = singleSelectedIndex?.let { isCardDead(hand[it]) } == true
 
     Column(
         modifier = modifier
@@ -87,7 +86,7 @@ fun HandView(
         }
 
         // Action button for dead card swap if selected
-        if (selectedIsDead) {
+        if (singleSelectedIndex != null && isCardDead(hand[singleSelectedIndex])) {
             Spacer(modifier = Modifier.height(4.dp))
             Button(
                 onClick = { onSwapDeadCard(singleSelectedIndex) },
