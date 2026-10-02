@@ -29,10 +29,10 @@ data class GameConfig(
             in 10..12 -> 3
             else -> error("unknown playerCount $playerCount")
         }
-        fun soloVsAi(seed: Long) = forPlayer(2, 2, seed)
-        fun tactical(playerCount: Int, teams: Int, seed: Long): GameConfig =
+        fun soloVsAi(seed: Long = 0L) = forPlayer(2, 2, seed)
+        fun tactical(playerCount: Int, teams: Int, seed: Long = 0L): GameConfig =
             forPlayer(playerCount, teams, seed).copy(enableTacticalCrafting = true)
-        fun forPlayer(playerCount: Int, teams: Int, seed: Long): GameConfig {
+        fun forPlayer(playerCount: Int, teams: Int, seed: Long = 0L): GameConfig {
             val teamOrder = listOf(Team.RED, Team.BLUE, Team.GREEN)
             val teamsByPlayerIndex = (0 until playerCount).map { teamOrder[it % teams] }
             return GameConfig(

@@ -90,7 +90,7 @@ fun HandView(
         if (selectedIsDead) {
             Spacer(modifier = Modifier.height(4.dp))
             Button(
-                onClick = { singleSelectedIndex?.let { onSwapDeadCard(it) } },
+                onClick = { onSwapDeadCard(singleSelectedIndex) },
                 colors = ButtonDefaults.buttonColors(containerColor = TeamRed),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.height(34.dp)
