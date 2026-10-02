@@ -49,6 +49,7 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
+            implementation(libs.kotlinx.coroutines.android)
         }
         commonMain.dependencies {
             api(projects.core)
@@ -63,6 +64,9 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+        }
+        jvmMain.dependencies {
+            implementation(libs.kotlinx.coroutines.swing)
         }
         jsMain.dependencies {
             implementation(libs.wrappers.browser)

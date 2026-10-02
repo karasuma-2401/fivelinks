@@ -15,12 +15,14 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.TacticalPatterns
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.domain.isOneEyedJack
 import com.karasuma.fivelinks.fivelinks_cmp.domain.isTwoEyedJack
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class GameViewModel(
     initialConfig: GameConfig = GameConfig.tactical(playerCount = 2, teams = 2),
@@ -263,13 +265,15 @@ class GameViewModel(
                 _uiState.update { it.copy(isAiThinking = true) }
                 delay(450) // Subtle delay for smooth human-friendly interaction
 
-                val aiMove = runCatching {
-                    aiEvaluator.chooseMove(
-                        state = _uiState.value.gameState,
-                        playerId = currentPlayer.id,
-                        difficulty = aiDifficulty
-                    )
-                }.getOrNull()
+                val aiMove = withContext(Dispatchers.Default) {
+                    runCatching {
+                        aiEvaluator.chooseMove(
+                            state = _uiState.value.gameState,
+                            playerId = currentPlayer.id,
+                            difficulty = aiDifficulty
+                        )
+                    }.getOrNull()
+                }
 
                 if (aiMove != null) {
                     val nextResult = GameEngine.applyMove(_uiState.value.gameState, aiMove)
