@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- FiveLink brand: red #FB4853 cards on charcoal #293130. -->
+    <color name="ic_launcher_background">#293130</color>
+    <color name="fivelink_splash_background">#293130</color>
+    <!-- Shown before Compose draws its first frame; matches the in-app background. -->
+    <color name="fivelink_window_background">#F7F5F2</color>
+</resources>

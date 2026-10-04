@@ -8,6 +8,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -49,13 +50,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,8 +71,11 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.components.Segmented
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
+import fivelinks_cmp.app.shared.generated.resources.Res
+import fivelinks_cmp.app.shared.generated.resources.fivelink_wordmark
 import kotlin.math.abs
 import kotlin.random.Random
+import org.jetbrains.compose.resources.painterResource
 
 enum class OpponentType {
     AI,
@@ -120,7 +120,8 @@ fun MenuScreen(
         ) {
             Spacer(modifier = Modifier.height(4.dp))
             HeroCardFan()
-            Spacer(modifier = Modifier.height(8.dp))
+            // The outer cards' tilted corners dip below the fan, so leave room for them.
+            Spacer(modifier = Modifier.height(20.dp))
             Logo()
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -324,18 +325,11 @@ private fun HeroCardFan(modifier: Modifier = Modifier) {
 
 @Composable
 private fun Logo() {
-    // The wordmark is sized in dp so system font scaling cannot push it off screen.
-    val density = LocalDensity.current
-    val size = with(density) { 38.dp.toSp() }
-    Text(
-        text = buildAnnotatedString {
-            withStyle(SpanStyle(color = MaterialTheme.colorScheme.onBackground)) { append("FIVE") }
-            withStyle(SpanStyle(color = BrandRed)) { append("LINKS") }
-        },
-        fontSize = size,
-        lineHeight = size * 1.15f,
-        fontWeight = FontWeight.Black,
-        letterSpacing = with(density) { 2.dp.toSp() }
+    // The FiveLink wordmark from the brand logo; brand red reads on both themes.
+    Image(
+        painter = painterResource(Res.drawable.fivelink_wordmark),
+        contentDescription = "FiveLink",
+        modifier = Modifier.width(210.dp)
     )
 }
 

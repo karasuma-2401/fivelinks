@@ -4,4 +4,27 @@ html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
+    background: #293130;
+}
+
+.splash {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 36px;
+}
+
+.spinner {
+    width: 26px;
+    height: 26px;
+    border: 3px solid rgba(251, 72, 83, 0.25);
+    border-top-color: #FB4853;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }

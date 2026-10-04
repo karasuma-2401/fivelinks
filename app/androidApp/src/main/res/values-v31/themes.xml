@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Android 12+ always shows a launch screen built from the app icon. Its background
+        matches the icon's, so only FiveLink's red cards show on charcoal.
+    -->
+    <style name="Theme.FiveLink" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/fivelink_window_background</item>
+        <item name="android:windowSplashScreenBackground">@color/fivelink_splash_background</item>
+    </style>
+</resources>

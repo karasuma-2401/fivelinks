@@ -25,8 +25,12 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "FiveLinks"
+            packageName = "FiveLink"
             packageVersion = "1.0.0"
+
+            windows { iconFile.set(project.file("icons/fivelink.ico")) }
+            macOS { iconFile.set(project.file("icons/fivelink.icns")) }
+            linux { iconFile.set(project.file("icons/fivelink.png")) }
         }
     }
 }
