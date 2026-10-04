@@ -3,60 +3,39 @@ package com.karasuma.fivelinks.fivelinks_cmp.ui.theme
 import androidx.compose.ui.graphics.Color
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 
-// Background & Surfaces (Modern Matte Espresso Dark)
-val BackgroundDark = Color(0xFF141312)        // Warm matte espresso black table
-val SurfaceDark = Color(0xFF1D1B19)           // Elevated dark surface
-val SurfaceElevated = Color(0xFF2A2825)       // Subtle card/modal surface
+// Brand (reference style: coral red + charcoal printed on warm white)
+val BrandRed = Color(0xFFFB4853)
+val BrandRedDeep = Color(0xFFD93441)
+val BrandDark = Color(0xFF293130)
+val PureWhite = Color(0xFFFFFFFF)
 
-// Board & Cells (Classic Ivory / Linen Board from reference image)
-val BoardContainerBg = Color(0xFFF5EFEB)      // Warm cream/ivory linen container
-val BoardCellBg = Color(0xFFFAF6F0)           // Light linen cell background
-val BoardCellBorder = Color(0xFFE5DDD3)       // Soft cell divider line
+// Light theme
+val BackgroundLight = Color(0xFFF7F5F2)
+val SurfaceLight = Color(0xFFFFFFFF)
+val SurfaceLightElevated = Color(0xFFEFECE8)
+val BorderLight = Color(0xFFDDD9D3)
+val TextMutedLight = Color(0xFF7A7775)
 
-// Compatibility aliases
-val BoardBackground = BoardContainerBg
-val CellBackground = BoardCellBg
-val CellBorder = BoardCellBorder
+// Night theme ("turn your lights down low")
+val BackgroundNight = Color(0xFF141312)
+val SurfaceNight = Color(0xFF1D1B19)
+val SurfaceNightElevated = Color(0xFF2A2825)
+val BorderNight = Color(0xFF3A3733)
+val TextOnNight = Color(0xFFF2F0ED)
+val TextMutedNight = Color(0xFF9C978F)
 
-// Header & Typography Colors
-val TextPrimary = Color(0xFFF7F5F2)           // Off-white headline
-val TextSecondary = Color(0xFF8E8B85)         // Muted gray for DECK / TURN
-val TurnBadgeBg = Color(0xFF5A3816)           // Warm caramel/amber badge background
-val TurnBadgeText = Color(0xFFF5A623)         // Golden amber badge text
+// Playing cards: red suits on coral, black suits on charcoal, white print
+val CardBgRed = BrandRed
+val CardBgBlack = BrandDark
+val CardContentWhite = PureWhite
 
-// Team & Acrylic Frosted Chip Colors (matching reference image)
-val TeamBlue = Color(0xFF4A72D8)              // Crisp vibrant periwinkle blue
-val TeamBlueChip = Color(0x994A72D8)          // Translucent frosted blue (~60% alpha)
-val TeamBlueBorder = Color(0xFF4A72D8)
-val TeamBlueGlow = Color(0xFF7B9DF6)
-val TeamBlueLight = Color(0xFF93C5FD)
+// Corner star & legendary (Divine Wipe) accent
+val GoldAccent = Color(0xFFEAA036)
 
-val TeamRed = Color(0xFFEB5378)               // Crisp vibrant coral-rose red
-val TeamRedChip = Color(0x99EB5378)           // Translucent frosted rose (~60% alpha)
-val TeamRedBorder = Color(0xFFEB5378)
-val TeamRedGlow = Color(0xFFF87171)
-val TeamRedLight = Color(0xFFFCA5A5)
-
-val TeamGreen = Color(0xFF2E9A68)             // Crisp emerald green
-val TeamGreenChip = Color(0x992E9A68)
-val TeamGreenBorder = Color(0xFF2E9A68)
-val TeamGreenGlow = Color(0xFF34D399)
-val TeamGreenLight = Color(0xFF6EE7B7)
-
-// Tactical Highlights & Accents
-val GoldAccent = Color(0xFFEAA036)            // Warm gold / corner star
-val GoldGlow = Color(0xFFFCD34D)              // Aura
-val HighlightValid = Color(0xFF2E9A68)        // Subtle legal move green
-val HighlightAttack = Color(0xFFEB5378)       // Subtle snipe attack red
-val HighlightSelected = Color(0xFFEAA036)     // Gold highlight for selection
-
-// Physical Card Face Colors (Crisp printing on white card stock)
-val CardSurfaceWhite = Color(0xFFFB4853)      // Pure card stock white
-val CardSurfaceLight = Color(0xFFFFFFFF)
-val CardBorder = Color(0xFFD6CFC4)            // Soft tactile card edge
-val CardSuitRed = Color(0xFFFFFFFF)           // Pure crimson red
-val CardSuitBlack = Color(0xFFFFFFFF)         // Pure deep charcoal black
-val CornerGold = Color(0xFFEAA036)            // Star gold
+// Teams
+val TeamBlue = Color(0xFF2563EB)
+val TeamRed = Color(0xFFE5323F)
+val TeamGreen = Color(0xFF10B981)
 
 fun Team.primaryColor(): Color = when (this) {
     Team.BLUE -> TeamBlue
@@ -64,26 +43,16 @@ fun Team.primaryColor(): Color = when (this) {
     Team.GREEN -> TeamGreen
 }
 
-fun Team.chipFillColor(): Color = when (this) {
-    Team.BLUE -> TeamBlueChip
-    Team.RED -> TeamRedChip
-    Team.GREEN -> TeamGreenChip
+/** Top-left highlight of the glossy chip body. */
+fun Team.chipHighlight(): Color = when (this) {
+    Team.BLUE -> Color(0xFF7EA6FF)
+    Team.RED -> Color(0xFFFF8F97)
+    Team.GREEN -> Color(0xFF6EE7B7)
 }
 
-fun Team.chipBorderColor(): Color = when (this) {
-    Team.BLUE -> TeamBlueBorder
-    Team.RED -> TeamRedBorder
-    Team.GREEN -> TeamGreenBorder
-}
-
-fun Team.glowColor(): Color = when (this) {
-    Team.BLUE -> TeamBlueGlow
-    Team.RED -> TeamRedGlow
-    Team.GREEN -> TeamGreenGlow
-}
-
-fun Team.lightColor(): Color = when (this) {
-    Team.BLUE -> TeamBlueLight
-    Team.RED -> TeamRedLight
-    Team.GREEN -> TeamGreenLight
+/** Bottom-right shade of the glossy chip body. */
+fun Team.chipShade(): Color = when (this) {
+    Team.BLUE -> Color(0xFF173E9C)
+    Team.RED -> Color(0xFF9E1525)
+    Team.GREEN -> Color(0xFF0A7353)
 }

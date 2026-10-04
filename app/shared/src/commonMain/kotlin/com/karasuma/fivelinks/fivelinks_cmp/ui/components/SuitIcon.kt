@@ -13,8 +13,9 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Rank
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.CardSuitBlack
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.CardSuitRed
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.CardBgBlack
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.CardBgRed
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.CardContentWhite
 
 fun Suit.symbol(): String = when (this) {
     Suit.HEARTS -> "♥"
@@ -23,10 +24,13 @@ fun Suit.symbol(): String = when (this) {
     Suit.SPADES -> "♠"
 }
 
-fun Suit.color(): Color = when (this) {
-    Suit.HEARTS, Suit.DIAMONDS -> CardSuitRed
-    Suit.CLUBS, Suit.SPADES -> CardSuitBlack
-}
+fun Suit.isRed(): Boolean = this == Suit.HEARTS || this == Suit.DIAMONDS
+
+/** Card stock colour: coral for red suits, charcoal for black suits. */
+fun Suit.cardBackground(): Color = if (isRed()) CardBgRed else CardBgBlack
+
+/** Print colour on the card stock (always white, as in the reference). */
+fun Suit.color(): Color = CardContentWhite
 
 fun Rank.shortName(): String = when (this) {
     Rank.TWO -> "2"

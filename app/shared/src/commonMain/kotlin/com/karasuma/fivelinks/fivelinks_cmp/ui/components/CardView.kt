@@ -1,11 +1,11 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ui.components
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,211 +15,246 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
-import com.karasuma.fivelinks.fivelinks_cmp.domain.isOneEyedJack
+import com.karasuma.fivelinks.fivelinks_cmp.domain.isJack
 import com.karasuma.fivelinks.fivelinks_cmp.domain.isTwoEyedJack
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.CardBorder
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.CardSurfaceWhite
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamBlue
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamRed
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
+
+val HandCardWidth = 68.dp
+
+/**
+ * Flat card face in the reference style: coral for red suits, charcoal for
+ * black suits, white print. Every measure derives from [width]; text is
+ * converted from dp so the system font scale can never overflow the card.
+ */
+@Composable
+fun PlayingCardFace(
+    card: Card,
+    width: Dp,
+    modifier: Modifier = Modifier,
+    showJackRole: Boolean = true
+) {
+    val density = LocalDensity.current
+    val indexRankSize = with(density) { (width * 0.27f).toSp() }
+    val cornerRankSize = with(density) { (width * 0.17f).toSp() }
+    val shape = RoundedCornerShape(width * 0.14f)
+    val edge = FiveLinksTheme.colors.cardEdge
+
+    Box(
+        modifier = modifier
+            .size(width, width * 1.5f)
+            .clip(shape)
+            .background(card.suit.cardBackground())
+            .then(if (edge.alpha > 0f) Modifier.border(1.dp, edge, shape) else Modifier)
+    ) {
+        CardIndex(
+            card = card,
+            rankSize = indexRankSize,
+            suitSize = width * 0.17f,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = width * 0.08f, top = width * 0.07f)
+        )
+
+        SuitVector(
+            suit = card.suit,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(width * 0.4f),
+            color = card.suit.color()
+        )
+
+        CardIndex(
+            card = card,
+            rankSize = cornerRankSize,
+            suitSize = width * 0.11f,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = width * 0.08f, bottom = width * 0.07f)
+                .rotate(180f)
+        )
+
+        if (showJackRole && card.isJack()) {
+            JackRoleTag(
+                card = card,
+                cardWidth = width,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = width * 0.07f, top = width * 0.62f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CardIndex(
+    card: Card,
+    rankSize: TextUnit,
+    suitSize: Dp,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = card.rank.shortName(),
+            fontSize = rankSize,
+            lineHeight = rankSize,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-0.5).sp,
+            color = card.suit.color(),
+            maxLines = 1,
+            softWrap = false
+        )
+        Spacer(modifier = Modifier.height(suitSize * 0.2f))
+        SuitVector(
+            suit = card.suit,
+            modifier = Modifier.size(suitSize),
+            color = card.suit.color()
+        )
+    }
+}
+
+/**
+ * WILD / SNIPE marker for jacks. It sits on the left edge so it stays readable
+ * while the cards overlap in the hand.
+ */
+@Composable
+private fun JackRoleTag(
+    card: Card,
+    cardWidth: Dp,
+    modifier: Modifier = Modifier
+) {
+    val textSize = with(LocalDensity.current) { (cardWidth * 0.12f).toSp() }
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .background(PureWhite)
+            .padding(horizontal = cardWidth * 0.055f, vertical = cardWidth * 0.025f)
+    ) {
+        Text(
+            text = if (card.isTwoEyedJack()) "WILD" else "SNIPE",
+            fontSize = textSize,
+            lineHeight = textSize,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.3.sp,
+            color = card.suit.cardBackground(),
+            maxLines = 1,
+            softWrap = false
+        )
+    }
+}
 
 @Composable
 fun HandCardView(
     card: Card,
     isSelected: Boolean,
     modifier: Modifier = Modifier,
+    width: Dp = HandCardWidth,
     isDead: Boolean = false,
     isCraftHighlight: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit = {}
 ) {
-    val offsetY by animateDpAsState(
-        targetValue = if (isSelected) (-18).dp else 0.dp,
-        animationSpec = tween(durationMillis = 150)
+    val lift by animateDpAsState(
+        targetValue = if (isSelected) (-16).dp else 0.dp,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow)
     )
-
-    val borderColor = when {
-        isCraftHighlight -> GoldAccent
-        isSelected -> GoldAccent
-        else -> CardBorder
+    val shape = RoundedCornerShape(width * 0.14f)
+    val (borderWidth, borderColor) = when {
+        isCraftHighlight -> 2.5.dp to GoldAccent
+        isSelected -> 2.dp to PureWhite
+        else -> 1.dp to PureWhite.copy(alpha = 0.16f)
     }
-
-    val borderWidth = when {
-        isCraftHighlight || isSelected -> 2.dp
-        else -> 1.dp
-    }
-
-    val shape = RoundedCornerShape(8.dp)
 
     Box(
         modifier = modifier
-            .offset(y = offsetY)
-            .shadow(if (isSelected) 10.dp else 4.dp, shape)
-            .clip(shape)
-            .background(CardSurfaceWhite)
-            .border(borderWidth, borderColor, shape)
+            .offset(y = lift)
+            .shadow(if (isSelected) 14.dp else 5.dp, shape)
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = null,
                 indication = null,
+                enabled = enabled,
                 onClick = onClick
             )
-            .padding(4.dp)
-            .width(52.dp)
-            .height(82.dp)
     ) {
-        // Top-left Rank & Vector Suit
-        Column(
-            modifier = Modifier.align(Alignment.TopStart),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = card.rank.shortName(),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black,
-                color = card.suit.color(),
-                lineHeight = 14.sp,
-                maxLines = 1,
-                softWrap = false
-            )
-            Spacer(modifier = Modifier.height(1.dp))
-            SuitVector(
-                suit = card.suit,
-                modifier = Modifier.size(10.dp),
-                color = card.suit.color()
-            )
-        }
+        PlayingCardFace(card = card, width = width)
 
-        // Center: Vector Suit Watermark or Jack badge
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                card.isOneEyedJack() -> {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(TeamRed.copy(alpha = 0.12f))
-                            .border(1.dp, TeamRed.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "SNIPE",
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = TeamRed
-                        )
-                    }
-                }
-                card.isTwoEyedJack() -> {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(TeamBlue.copy(alpha = 0.12f))
-                            .border(1.dp, TeamBlue.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "WILD",
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = TeamBlue
-                        )
-                    }
-                }
-                else -> {
-                    SuitVector(
-                        suit = card.suit,
-                        modifier = Modifier.size(24.dp),
-                        color = card.suit.color().copy(alpha = 0.85f)
-                    )
-                }
-            }
-        }
-
-        // Bottom-right Inverted Rank & Vector Suit
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .rotate(180f),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = card.rank.shortName(),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Black,
-                color = card.suit.color(),
-                lineHeight = 13.sp,
-                maxLines = 1,
-                softWrap = false
-            )
-            Spacer(modifier = Modifier.height(1.dp))
-            SuitVector(
-                suit = card.suit,
-                modifier = Modifier.size(9.dp),
-                color = card.suit.color()
-            )
-        }
-
-        // Dead Card Dimming Overlay
         if (isDead) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.55f)),
-                contentAlignment = Alignment.Center
+                    .matchParentSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
             ) {
+                val deadSize = with(LocalDensity.current) { (width * 0.13f).toSp() }
                 Text(
                     text = "DEAD",
-                    fontSize = 9.sp,
+                    fontSize = deadSize,
+                    lineHeight = deadSize,
                     fontWeight = FontWeight.Black,
-                    color = Color.White
+                    letterSpacing = 1.sp,
+                    color = PureWhite,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = width * 0.08f, bottom = width * 0.12f)
                 )
             }
         }
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .border(borderWidth, borderColor, shape)
+        )
     }
 }
 
+/** Rank + suit printed on a board cell; the cell itself paints the card stock. */
 @Composable
 fun BoardCellCardView(
     card: Card,
+    cellSize: Dp,
     modifier: Modifier = Modifier
 ) {
+    val rankSize = with(LocalDensity.current) { (cellSize * 0.34f).toSp() }
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(1.dp),
+        modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = card.rank.shortName(),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Black,
+            fontSize = rankSize,
+            lineHeight = rankSize,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.3).sp,
             color = card.suit.color(),
-            lineHeight = 11.sp,
             maxLines = 1,
             softWrap = false
         )
-        Spacer(modifier = Modifier.height(1.5.dp))
+        Spacer(modifier = Modifier.height(cellSize * 0.05f))
         SuitVector(
             suit = card.suit,
-            modifier = Modifier.size(9.dp),
+            modifier = Modifier.size(cellSize * 0.24f),
             color = card.suit.color()
         )
     }

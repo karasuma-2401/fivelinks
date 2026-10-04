@@ -1,140 +1,250 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.SurfaceDark
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.SurfaceElevated
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamBlueGlow
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamRedGlow
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamBlue
 
 @Composable
 fun RulesDialog(
     onDismiss: () -> Unit
 ) {
-    val scrollState = rememberScrollState()
-
     Dialog(onDismissRequest = onDismiss) {
-        val shape = RoundedCornerShape(16.dp)
+        val shape = RoundedCornerShape(28.dp)
 
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .shadow(16.dp, shape)
+                .fillMaxWidth()
+                .heightIn(max = 640.dp)
                 .clip(shape)
-                .background(SurfaceDark)
-                .border(1.5.dp, GoldAccent.copy(alpha = 0.8f), shape)
-                .padding(18.dp)
+                .background(MaterialTheme.colorScheme.surface)
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(scrollState),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(start = 24.dp, end = 16.dp, top = 22.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "HƯỚNG DẪN",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 3.sp,
+                        color = BrandRed
+                    )
+                    Text(
+                        text = "Luật chơi",
+                        fontSize = 26.sp,
+                        lineHeight = 32.sp,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable(role = Role.Button, onClick = onDismiss)
+                        .semantics { contentDescription = "Đóng" },
+                    contentAlignment = Alignment.Center
+                ) {
+                    LineIconView(
+                        icon = LineIcon.Close,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 10.dp)
+            ) {
+                RuleSection(number = "01", title = "Luật cốt lõi", subtitle = "CLASSIC SEQUENCE") {
+                    RuleItem(text = "Bàn cờ 10×10 gồm các lá bài tương ứng bộ bài Tây (bỏ Jack).")
+                    RuleItem(text = "4 góc bàn cờ là Ô Tự Do (Wild Corner), tính cho tất cả người chơi.")
+                    RuleItem(text = "Mục tiêu: xếp đủ số hàng 5 quân liên tiếp (ngang, dọc, chéo) để chiến thắng.")
+                    RuleItem(tag = "WILD", tagColor = TeamBlue, text = "Jack 2 mắt: đặt quân vào bất kỳ ô trống nào.")
+                    RuleItem(tag = "SNIPE", tagColor = BrandRed, text = "Jack 1 mắt: loại bỏ 1 quân của đối thủ (trừ quân đã khóa trong hàng 5).")
+                    RuleItem(text = "Bài chết: khi cả 2 ô của lá bài đều bị chiếm, chọn lá đó để đổi lá mới.")
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                RuleSection(number = "02", title = "Cơ chế chiến thuật", subtitle = "TACTICAL MODE") {
+                    RuleItem(
+                        tag = "WILD",
+                        tagColor = TeamBlue,
+                        title = "Ghép đôi (2 lá cùng số)",
+                        text = "Tạo Jack 2 mắt nhân tạo: đặt 1 quân vào bất kỳ ô trống nào (bỏ 2 lá, rút 2 lá mới)."
+                    )
+                    RuleItem(
+                        tag = "SNIPE",
+                        tagColor = BrandRed,
+                        title = "Đồng chất liền kề (2 lá liên tiếp cùng chất)",
+                        text = "Tạo Jack 1 mắt nhân tạo: bắn tỉa 1 quân đối thủ chưa khóa (bỏ 2 lá, rút 2 lá mới)."
+                    )
+                    RuleItem(
+                        tag = "THIÊN PHẠT",
+                        tagColor = GoldAccent,
+                        title = "Thiên Phạt Hoàng Kim (sảnh đồng chất 5 lá)",
+                        text = "Chiêu thức huyền thoại: xóa sạch toàn bộ quân cờ và hàng khóa của đối phương trên bàn cờ!"
+                    )
+                }
+            }
+
+            Button(
+                onClick = onDismiss,
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(containerColor = BrandRed, contentColor = PureWhite),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 22.dp)
+                    .height(52.dp)
             ) {
                 Text(
-                    text = "HƯỚNG DẪN LUẬT CHƠI",
-                    fontSize = 18.sp,
+                    text = "ĐÃ HIỂU",
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
-                    color = GoldAccent
+                    letterSpacing = 2.sp
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Section 1: Classic Rules
-                RuleCard(
-                    title = "1. Luật Cốt Lõi (Classic Sequence)",
-                    color = TeamBlueGlow
-                ) {
-                    Text("• Bàn cờ 10x10 gồm các lá bài tương ứng bộ bài Tây (bỏ Jacks).", fontSize = 11.sp, color = Color(0xFFE2E8F0))
-                    Text("• 4 góc bàn cờ là Ô Tự Do (Wild Corner) tính cho tất cả người chơi.", fontSize = 11.sp, color = Color(0xFFE2E8F0))
-                    Text("• Mục tiêu: Xếp đủ 2 hàng 5 quân cờ liên tiếp (ngang, dọc, chéo) để chiến thắng.", fontSize = 11.sp, color = Color(0xFFE2E8F0))
-                    Text("• Jack 2 Mắt (Two-Eyed): Đặt quân vào bất kỳ ô trống nào.", fontSize = 11.sp, color = Color(0xFFE2E8F0))
-                    Text("• Jack 1 Mắt (One-Eyed): Loại bỏ 1 quân cờ của đối thủ (trừ quân đã khóa trong hàng 5).", fontSize = 11.sp, color = Color(0xFFE2E8F0))
-                    Text("• Bài Chết (Dead Card): Khi cả 2 ô của lá bài đều bị chiếm, có thể chọn và đổi bài rút lá mới.", fontSize = 11.sp, color = Color(0xFFE2E8F0))
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Section 2: Tactical Crafting
-                RuleCard(
-                    title = "2. Cơ Chế Chiến Thuật Mới (Tactical Mode)",
-                    color = GoldAccent
-                ) {
-                    Text("Ghép Đôi (Pair - 2 lá cùng số):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TeamBlueGlow)
-                    Text("Tạo ra Jack 2 Mắt nhân tạo ➔ Đặt 1 quân vào bất kỳ ô trống nào (bỏ 2 lá, rút 2 lá mới).", fontSize = 11.sp, color = Color(0xFFE2E8F0))
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Suited Connector (2 lá liên tiếp đồng chất):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TeamRedGlow)
-                    Text("Tạo ra Jack 1 Mắt nhân tạo ➔ Bắn tỉa 1 quân cờ của đối thủ chưa khóa (bỏ 2 lá, rút 2 lá mới).", fontSize = 11.sp, color = Color(0xFFE2E8F0))
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Thiên Phạt Hoàng Kim (Straight Flush 5 lá):", fontSize = 11.sp, fontWeight = FontWeight.Black, color = GoldAccent)
-                    Text("Khi sở hữu sảnh 5 lá đồng chất liên tiếp ➔ Kích hoạt chiêu thức Huyền Thoại: Xóa sạch toàn bộ quân cờ và hàng khóa của đối phương trên bàn cờ!", fontSize = 11.sp, color = Color(0xFFFDE68A))
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = onDismiss,
-                    colors = ButtonDefaults.buttonColors(containerColor = GoldAccent),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth(0.5f)
-                ) {
-                    Text("Đã Hiểu", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
             }
         }
     }
 }
 
 @Composable
-private fun RuleCard(
+private fun RuleSection(
+    number: String,
     title: String,
-    color: Color,
+    subtitle: String,
     content: @Composable () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
-        shape = RoundedCornerShape(10.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(16.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = title,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
+                text = number,
+                fontSize = 22.sp,
+                lineHeight = 26.sp,
+                fontWeight = FontWeight.Black,
+                color = BrandRed
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = title,
+                    fontSize = 15.sp,
+                    lineHeight = 19.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 9.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             content()
+        }
+    }
+}
+
+@Composable
+private fun RuleItem(
+    text: String,
+    title: String? = null,
+    tag: String? = null,
+    tagColor: Color = BrandRed
+) {
+    Row(verticalAlignment = Alignment.Top) {
+        Box(
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(tagColor)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Column {
+            if (tag != null) {
+                Text(
+                    text = tag,
+                    fontSize = 9.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp,
+                    color = tagColor,
+                    modifier = Modifier
+                        .padding(bottom = 4.dp)
+                        .clip(CircleShape)
+                        .background(tagColor.copy(alpha = 0.14f))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
+            if (title != null) {
+                Text(
+                    text = title,
+                    fontSize = 12.5.sp,
+                    lineHeight = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Text(
+                text = text,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f)
+            )
         }
     }
 }

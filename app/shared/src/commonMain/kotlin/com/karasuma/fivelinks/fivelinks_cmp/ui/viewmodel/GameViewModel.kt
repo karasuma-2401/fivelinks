@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.random.Random
 
 class GameViewModel(
     initialConfig: GameConfig = GameConfig.tactical(playerCount = 2, teams = 2),
@@ -49,7 +50,8 @@ class GameViewModel(
     }
 
     fun startNewGame(
-        config: GameConfig = _uiState.value.gameState.config,
+        // New seed so a rematch deals a different board and hands.
+        config: GameConfig = _uiState.value.gameState.config.copy(seed = Random.nextLong()),
         players: List<Player> = _uiState.value.gameState.players
     ) {
         _uiState.value = createInitialState(config, players)
