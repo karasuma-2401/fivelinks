@@ -8,11 +8,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.karasuma.fivelinks.fivelinks_cmp.ai.Difficulty
-import com.karasuma.fivelinks.fivelinks_cmp.domain.GameConfig
-import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
-import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.GameScreen
-import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.MenuScreen
+import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.game.GameScreen
+import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.MenuScreen
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BackgroundDark
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameViewModel

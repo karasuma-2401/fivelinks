@@ -1,9 +1,7 @@
-package com.karasuma.fivelinks.fivelinks_cmp.ui.screens
+package com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -32,10 +29,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karasuma.fivelinks.fivelinks_cmp.ai.Difficulty
@@ -43,11 +40,12 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.GameConfig
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.RulesDialog
+import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.components.OptionButton
+import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.components.DifficultyButton
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BackgroundDark
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.SurfaceDark
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.SurfaceElevated
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamBlue
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TextPrimary
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TextSecondary
 
@@ -324,58 +322,14 @@ fun MenuScreen(
     }
 }
 
-@Composable
-private fun OptionButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val shape = RoundedCornerShape(8.dp)
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(if (isSelected) TeamBlue else SurfaceElevated)
-            .border(
-                width = if (isSelected) 1.dp else 0.dp,
-                color = if (isSelected) GoldAccent else Color.Transparent,
-                shape = shape
-            )
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) Color.White else TextSecondary,
-            textAlign = TextAlign.Center
-        )
-    }
-}
+
+
+
 
 @Composable
-private fun DifficultyButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val shape = RoundedCornerShape(6.dp)
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(if (isSelected) GoldAccent else SurfaceElevated)
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (isSelected) Color.Black else TextSecondary
-        )
-    }
+@Preview(showBackground = true, showSystemUi = true)
+fun MenuScreenPreview() {
+    MenuScreen(
+        onStartGame = { _, _, _ -> }
+    )
 }

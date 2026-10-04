@@ -51,11 +51,11 @@ val HighlightAttack = Color(0xFFEB5378)       // Subtle snipe attack red
 val HighlightSelected = Color(0xFFEAA036)     // Gold highlight for selection
 
 // Physical Card Face Colors (Crisp printing on white card stock)
-val CardSurfaceWhite = Color(0xFFFFFFFF)      // Pure card stock white
+val CardSurfaceWhite = Color(0xFFFB4853)      // Pure card stock white
 val CardSurfaceLight = Color(0xFFFFFFFF)
 val CardBorder = Color(0xFFD6CFC4)            // Soft tactile card edge
-val CardSuitRed = Color(0xFFD32F2F)           // Pure crimson red
-val CardSuitBlack = Color(0xFF1E1E1E)         // Pure deep charcoal black
+val CardSuitRed = Color(0xFFFFFFFF)           // Pure crimson red
+val CardSuitBlack = Color(0xFFFFFFFF)         // Pure deep charcoal black
 val CornerGold = Color(0xFFEAA036)            // Star gold
 
 fun Team.primaryColor(): Color = when (this) {

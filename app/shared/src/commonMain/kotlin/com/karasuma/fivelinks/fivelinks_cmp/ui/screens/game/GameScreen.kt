@@ -1,4 +1,4 @@
-package com.karasuma.fivelinks.fivelinks_cmp.ui.screens
+package com.karasuma.fivelinks.fivelinks_cmp.ui.screens.game
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.BoardGrid
@@ -144,4 +145,15 @@ fun GameScreen(
             RulesDialog(onDismiss = { showRules = false })
         }
     }
+}
+
+@Composable
+@Preview(showSystemUi = true, showBackground = true)
+fun GameScreenPreview() {
+    GameScreen(
+        viewModel = GameViewModel(),
+        onExitToMenu = {},
+        modifier = Modifier.fillMaxSize(),
+
+    )
 }
