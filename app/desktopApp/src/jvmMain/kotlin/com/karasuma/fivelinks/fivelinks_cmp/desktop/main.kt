@@ -9,7 +9,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.App
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "FiveLinks - Sequence Card Game",
+        title = "FiveLinks - Bài Tây chiến thuật",
         state = rememberWindowState(width = 1200.dp, height = 800.dp)
     ) {
         App()

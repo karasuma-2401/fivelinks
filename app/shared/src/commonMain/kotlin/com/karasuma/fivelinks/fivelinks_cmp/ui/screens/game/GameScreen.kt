@@ -4,8 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -26,26 +22,32 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
+import com.karasuma.fivelinks.fivelinks_cmp.PlatformBackHandler
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.BoardGrid
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.GameHeader
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.GameNotice
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.GameNoticeBanner
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.GameOverOverlay
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.HandView
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIcon
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.MessageBox
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.RulesDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.TacticalCraftingBar
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameViewModel
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
+
+private enum class PendingConfirm {
+    Restart,
+    ExitToMenu
+}
 
 @Composable
 fun GameScreen(
@@ -55,6 +57,9 @@ fun GameScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showRules by remember { mutableStateOf(false) }
+    var pendingConfirm by remember { mutableStateOf<PendingConfirm?>(null) }
+    var notice by remember(viewModel) { mutableStateOf<GameNotice?>(null) }
+    var noticeShownAt by remember { mutableStateOf(TimeSource.Monotonic.markNow()) }
 
     // Match clock: ticks only while the game is live and the app is in the foreground.
     var elapsedSeconds by remember(viewModel) { mutableIntStateOf(0) }
@@ -70,6 +75,27 @@ fun GameScreen(
     val restartGame = {
         viewModel.startNewGame()
         elapsedSeconds = 0
+        notice = null
+    }
+
+    // Match commentary: compare each new state with the previous one.
+    val lastSeenState = remember(viewModel) { mutableStateOf(uiState.gameState) }
+    LaunchedEffect(uiState.gameState) {
+        val next = moveNotice(lastSeenState.value, uiState.gameState, id = (notice?.id ?: 0L) + 1)
+        lastSeenState.value = uiState.gameState
+        if (next == null) return@LaunchedEffect
+        // Let an emphasised notice (Thiên Phạt) finish before the AI's reply replaces it.
+        if (notice?.emphasis == true) {
+            val remaining = 2600.milliseconds - noticeShownAt.elapsedNow()
+            if (remaining.isPositive()) delay(remaining)
+        }
+        notice = next
+        noticeShownAt = TimeSource.Monotonic.markNow()
+    }
+    LaunchedEffect(uiState.errorMessage) {
+        val message = uiState.errorMessage ?: return@LaunchedEffect
+        notice = GameNotice(id = (notice?.id ?: 0L) + 1, text = message, accent = BrandRed, icon = LineIcon.Alert)
+        noticeShownAt = TimeSource.Monotonic.markNow()
     }
 
     val gameState = uiState.gameState
@@ -81,6 +107,16 @@ fun GameScreen(
         currentPlayer
     }
     val isPlayerTurn = !currentPlayer.isAi && !uiState.isAiThinking && !uiState.isGameOver
+
+    // Only ask for confirmation when there is progress to lose.
+    val gameInProgress = gameState.turnNumber > 0 && !uiState.isGameOver
+    val requestRestart: () -> Unit = {
+        if (gameInProgress) pendingConfirm = PendingConfirm.Restart else restartGame()
+    }
+    val requestExit: () -> Unit = {
+        if (gameInProgress) pendingConfirm = PendingConfirm.ExitToMenu else onExitToMenu()
+    }
+    PlatformBackHandler(onBack = requestExit)
 
     Box(
         modifier = modifier
@@ -97,9 +133,9 @@ fun GameScreen(
                 gameState = gameState,
                 isAiThinking = uiState.isAiThinking,
                 elapsedSeconds = elapsedSeconds,
-                onRestartClick = restartGame,
+                onRestartClick = requestRestart,
                 onRulesClick = { showRules = true },
-                onMenuClick = onExitToMenu
+                onMenuClick = requestExit
             )
 
             Box(
@@ -115,11 +151,9 @@ fun GameScreen(
                     validSnipePositions = uiState.validSnipePositions,
                     onCellClick = { pos -> viewModel.onCellClick(pos) }
                 )
-                ErrorToast(
-                    message = uiState.errorMessage,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 10.dp)
+                GameNoticeBanner(
+                    notice = notice,
+                    modifier = Modifier.align(Alignment.TopCenter)
                 )
             }
 
@@ -155,45 +189,32 @@ fun GameScreen(
         if (showRules) {
             RulesDialog(onDismiss = { showRules = false })
         }
-    }
-}
 
-/** Floating error pill that slides in over the board and hides itself. */
-@Composable
-private fun ErrorToast(
-    message: String?,
-    modifier: Modifier = Modifier
-) {
-    var visible by remember(message) { mutableStateOf(message != null) }
-    var lastMessage by remember { mutableStateOf("") }
-    LaunchedEffect(message) {
-        if (message != null) {
-            lastMessage = message
-            delay(2600)
-            visible = false
+        when (pendingConfirm) {
+            PendingConfirm.Restart -> MessageBox(
+                title = "Chơi lại từ đầu?",
+                message = "Ván đang chơi sẽ bị hủy và không thể khôi phục.",
+                confirmText = "Chơi lại",
+                dismissText = "Hủy",
+                onConfirm = {
+                    pendingConfirm = null
+                    restartGame()
+                },
+                onDismiss = { pendingConfirm = null }
+            )
+            PendingConfirm.ExitToMenu -> MessageBox(
+                title = "Về menu chính?",
+                message = "Ván đang chơi sẽ không được lưu lại.",
+                confirmText = "Về menu",
+                dismissText = "Ở lại",
+                onConfirm = {
+                    pendingConfirm = null
+                    onExitToMenu()
+                },
+                onDismiss = { pendingConfirm = null }
+            )
+            null -> Unit
         }
-    }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn() + slideInVertically { -it },
-        exit = fadeOut() + slideOutVertically { -it },
-        modifier = modifier
-    ) {
-        Text(
-            text = message ?: lastMessage,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = PureWhite,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .padding(horizontal = 24.dp)
-                .shadow(10.dp, CircleShape)
-                .clip(CircleShape)
-                .background(BrandRed)
-                .padding(horizontal = 18.dp, vertical = 10.dp)
-        )
     }
 }
 

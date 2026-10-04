@@ -97,32 +97,45 @@ fun RulesDialog(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 10.dp)
             ) {
-                RuleSection(number = "01", title = "Luật cốt lõi", subtitle = "CLASSIC SEQUENCE") {
-                    RuleItem(text = "Bàn cờ 10×10 gồm các lá bài tương ứng bộ bài Tây (bỏ Jack).")
-                    RuleItem(text = "4 góc bàn cờ là Ô Tự Do (Wild Corner), tính cho tất cả người chơi.")
+                RuleSection(number = "01", title = "Luật cốt lõi", subtitle = "ÁP DỤNG CHO MỌI VÁN") {
+                    RuleItem(text = "Bàn cờ 10×10 gồm các lá bài tương ứng bộ bài Tây (không có lá J).")
+                    RuleItem(text = "4 ô góc có ngôi sao là ô tự do, tính cho tất cả người chơi.")
                     RuleItem(text = "Mục tiêu: xếp đủ số hàng 5 quân liên tiếp (ngang, dọc, chéo) để chiến thắng.")
-                    RuleItem(tag = "WILD", tagColor = TeamBlue, text = "Jack 2 mắt: đặt quân vào bất kỳ ô trống nào.")
-                    RuleItem(tag = "SNIPE", tagColor = BrandRed, text = "Jack 1 mắt: loại bỏ 1 quân của đối thủ (trừ quân đã khóa trong hàng 5).")
-                    RuleItem(text = "Bài chết: khi cả 2 ô của lá bài đều bị chiếm, chọn lá đó để đổi lá mới.")
+                    RuleItem(
+                        tag = "TỰ DO",
+                        tagIcon = LineIcon.Sparkle,
+                        tagColor = TeamBlue,
+                        text = "J 2 mắt (J rô, J chuồn): đặt quân vào bất kỳ ô trống nào."
+                    )
+                    RuleItem(
+                        tag = "BẮN TỈA",
+                        tagIcon = LineIcon.Crosshair,
+                        tagColor = BrandRed,
+                        text = "J 1 mắt (J cơ, J bích): gỡ 1 quân của đối thủ (trừ quân đã khóa trong hàng 5)."
+                    )
+                    RuleItem(text = "Bài chết: khi cả 2 ô của lá bài đều đã có quân, chọn lá đó để đổi lá mới.")
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                RuleSection(number = "02", title = "Cơ chế chiến thuật", subtitle = "TACTICAL MODE") {
+                RuleSection(number = "02", title = "Cơ chế chiến thuật", subtitle = "KHI BẬT CHẾ ĐỘ CHIẾN THUẬT") {
                     RuleItem(
-                        tag = "WILD",
+                        tag = "TỰ DO",
+                        tagIcon = LineIcon.Sparkle,
                         tagColor = TeamBlue,
                         title = "Ghép đôi (2 lá cùng số)",
-                        text = "Tạo Jack 2 mắt nhân tạo: đặt 1 quân vào bất kỳ ô trống nào (bỏ 2 lá, rút 2 lá mới)."
+                        text = "Tạo J 2 mắt nhân tạo: đặt 1 quân vào bất kỳ ô trống nào (bỏ 2 lá, rút 2 lá mới)."
                     )
                     RuleItem(
-                        tag = "SNIPE",
+                        tag = "BẮN TỈA",
+                        tagIcon = LineIcon.Crosshair,
                         tagColor = BrandRed,
                         title = "Đồng chất liền kề (2 lá liên tiếp cùng chất)",
-                        text = "Tạo Jack 1 mắt nhân tạo: bắn tỉa 1 quân đối thủ chưa khóa (bỏ 2 lá, rút 2 lá mới)."
+                        text = "Tạo J 1 mắt nhân tạo: bắn tỉa 1 quân đối thủ chưa khóa (bỏ 2 lá, rút 2 lá mới)."
                     )
                     RuleItem(
                         tag = "THIÊN PHẠT",
+                        tagIcon = LineIcon.Bolt,
                         tagColor = GoldAccent,
                         title = "Thiên Phạt Hoàng Kim (sảnh đồng chất 5 lá)",
                         text = "Chiêu thức huyền thoại: xóa sạch toàn bộ quân cờ và hàng khóa của đối phương trên bàn cờ!"
@@ -203,6 +216,7 @@ private fun RuleItem(
     text: String,
     title: String? = null,
     tag: String? = null,
+    tagIcon: LineIcon? = null,
     tagColor: Color = BrandRed
 ) {
     Row(verticalAlignment = Alignment.Top) {
@@ -216,19 +230,23 @@ private fun RuleItem(
         Spacer(modifier = Modifier.width(10.dp))
         Column {
             if (tag != null) {
-                Text(
-                    text = tag,
-                    fontSize = 9.sp,
-                    lineHeight = 12.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp,
-                    color = tagColor,
-                    modifier = Modifier
-                        .padding(bottom = 4.dp)
-                        .clip(CircleShape)
-                        .background(tagColor.copy(alpha = 0.14f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                )
+                Row(
+                    modifier = Modifier.padding(bottom = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (tagIcon != null) {
+                        LineIconView(icon = tagIcon, color = tagColor, modifier = Modifier.size(12.dp), strokeWidth = 2.6f)
+                        Spacer(modifier = Modifier.width(5.dp))
+                    }
+                    Text(
+                        text = tag,
+                        fontSize = 10.sp,
+                        lineHeight = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                        color = tagColor
+                    )
+                }
             }
             if (title != null) {
                 Text(

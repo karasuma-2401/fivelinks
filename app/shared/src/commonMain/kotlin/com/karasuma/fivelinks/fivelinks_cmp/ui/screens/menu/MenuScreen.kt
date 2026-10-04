@@ -124,7 +124,7 @@ fun MenuScreen(
             Logo()
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "SEQUENCE  ·  TACTICAL  ·  AI",
+                text = "BÀI TÂY  ·  CHIẾN THUẬT  ·  AI",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 3.sp,
@@ -177,7 +177,7 @@ fun MenuScreen(
                 SettingToggle(
                     icon = LineIcon.Bolt,
                     title = "Chế độ chiến thuật",
-                    subtitle = "Ghép đôi (Wild) · Đồng chất liền kề (Snipe) · Thiên Phạt",
+                    subtitle = "Ghép đôi, đồng chất liền kề và Thiên Phạt",
                     checked = settings.enableTactical,
                     onCheckedChange = { onSettingsChange(settings.copy(enableTactical = it)) }
                 )
@@ -185,7 +185,7 @@ fun MenuScreen(
                 SettingToggle(
                     icon = LineIcon.Moon,
                     title = "Giao diện ban đêm",
-                    subtitle = "Turn your lights down low",
+                    subtitle = "Dịu mắt khi chơi buổi tối",
                     checked = isNightTheme,
                     onCheckedChange = onToggleNightTheme
                 )

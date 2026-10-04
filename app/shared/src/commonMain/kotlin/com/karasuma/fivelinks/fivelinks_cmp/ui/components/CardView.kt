@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,13 +75,24 @@ fun PlayingCardFace(
                 .padding(start = width * 0.08f, top = width * 0.07f)
         )
 
-        SuitVector(
-            suit = card.suit,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(width * 0.4f),
-            color = card.suit.color()
-        )
+        if (showJackRole && card.isJack()) {
+            // A jack's centre shows what it does instead of its suit.
+            LineIconView(
+                icon = card.jackRoleIcon(),
+                color = card.suit.color(),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(width * 0.36f)
+            )
+        } else {
+            SuitVector(
+                suit = card.suit,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(width * 0.4f),
+                color = card.suit.color()
+            )
+        }
 
         CardIndex(
             card = card,
@@ -98,7 +110,7 @@ fun PlayingCardFace(
                 cardWidth = width,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = width * 0.07f, top = width * 0.62f)
+                    .padding(start = width * 0.07f, top = width * 0.66f)
             )
         }
     }
@@ -135,31 +147,30 @@ private fun CardIndex(
 }
 
 /**
- * WILD / SNIPE marker for jacks. It sits on the left edge so it stays readable
- * while the cards overlap in the hand.
+ * Jack role badge: sparkle for a two-eyed jack (place anywhere), crosshair for a
+ * one-eyed jack (snipe). An icon fits the strip of a card that stays visible
+ * while the hand overlaps; the rules dialog explains both.
  */
+private fun Card.jackRoleIcon(): LineIcon = if (isTwoEyedJack()) LineIcon.Sparkle else LineIcon.Crosshair
+
 @Composable
 private fun JackRoleTag(
     card: Card,
     cardWidth: Dp,
     modifier: Modifier = Modifier
 ) {
-    val textSize = with(LocalDensity.current) { (cardWidth * 0.12f).toSp() }
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(PureWhite)
-            .padding(horizontal = cardWidth * 0.055f, vertical = cardWidth * 0.025f)
+            .size(cardWidth * 0.27f)
+            .clip(CircleShape)
+            .background(PureWhite),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = if (card.isTwoEyedJack()) "WILD" else "SNIPE",
-            fontSize = textSize,
-            lineHeight = textSize,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.3.sp,
+        LineIconView(
+            icon = card.jackRoleIcon(),
             color = card.suit.cardBackground(),
-            maxLines = 1,
-            softWrap = false
+            modifier = Modifier.size(cardWidth * 0.18f),
+            strokeWidth = 2.6f
         )
     }
 }
@@ -207,7 +218,7 @@ fun HandCardView(
             ) {
                 val deadSize = with(LocalDensity.current) { (width * 0.13f).toSp() }
                 Text(
-                    text = "DEAD",
+                    text = "CHẾT",
                     fontSize = deadSize,
                     lineHeight = deadSize,
                     fontWeight = FontWeight.Black,
@@ -225,6 +236,26 @@ fun HandCardView(
                 .matchParentSize()
                 .border(borderWidth, borderColor, shape)
         )
+    }
+}
+
+/** Small card (rank over suit) used inline in banners and the tactical bar. */
+@Composable
+fun MiniCard(
+    card: Card,
+    modifier: Modifier = Modifier,
+    width: Dp = 26.dp
+) {
+    val shape = RoundedCornerShape(width * 0.22f)
+    val edge = FiveLinksTheme.colors.cardEdge
+    Box(
+        modifier = modifier
+            .size(width, width * 1.25f)
+            .clip(shape)
+            .background(card.suit.cardBackground())
+            .then(if (edge.alpha > 0f) Modifier.border(1.dp, edge, shape) else Modifier)
+    ) {
+        BoardCellCardView(card = card, cellSize = width * 1.08f)
     }
 }
 

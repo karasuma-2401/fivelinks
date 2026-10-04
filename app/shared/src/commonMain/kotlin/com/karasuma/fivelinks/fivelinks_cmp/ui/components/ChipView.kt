@@ -33,16 +33,17 @@ fun ChipView(
     team: Team,
     modifier: Modifier = Modifier,
     isLastMove: Boolean = false,
-    pulse: State<Float>? = null
+    pulse: State<Float>? = null,
+    animateIn: Boolean = true
 ) {
     val base = team.primaryColor()
     val highlight = team.chipHighlight()
     val shade = team.chipShade()
 
     // Drop-in: the chip lands slightly oversized and settles with a small bounce.
-    val drop = remember { Animatable(0f) }
+    val drop = remember { Animatable(if (animateIn) 0f else 1f) }
     LaunchedEffect(Unit) {
-        drop.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow))
+        if (animateIn) drop.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow))
     }
 
     Canvas(

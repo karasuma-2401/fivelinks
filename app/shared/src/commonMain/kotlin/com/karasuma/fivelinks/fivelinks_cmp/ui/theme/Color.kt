@@ -31,6 +31,7 @@ val CardContentWhite = PureWhite
 
 // Corner star & legendary (Divine Wipe) accent
 val GoldAccent = Color(0xFFEAA036)
+val GoldGlow = Color(0xFFFFD27A)
 
 // Teams
 val TeamBlue = Color(0xFF2563EB)

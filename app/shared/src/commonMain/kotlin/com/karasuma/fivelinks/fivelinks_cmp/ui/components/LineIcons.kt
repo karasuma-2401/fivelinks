@@ -25,7 +25,12 @@ enum class LineIcon {
     Help,
     Moon,
     Bolt,
-    Close
+    Close,
+    Crosshair,
+    Sparkle,
+    Star,
+    Chip,
+    Alert
 }
 
 /**
@@ -83,6 +88,46 @@ fun LineIconView(
                 LineIcon.Close -> {
                     drawLine(color, p(6.5f, 6.5f), p(17.5f, 17.5f), stroke.width, StrokeCap.Round)
                     drawLine(color, p(17.5f, 6.5f), p(6.5f, 17.5f), stroke.width, StrokeCap.Round)
+                }
+                LineIcon.Crosshair -> {
+                    drawCircle(color, radius = 6.5f * unit, center = p(12f, 12f), style = stroke)
+                    drawLine(color, p(12f, 2.5f), p(12f, 7f), stroke.width, StrokeCap.Round)
+                    drawLine(color, p(12f, 17f), p(12f, 21.5f), stroke.width, StrokeCap.Round)
+                    drawLine(color, p(2.5f, 12f), p(7f, 12f), stroke.width, StrokeCap.Round)
+                    drawLine(color, p(17f, 12f), p(21.5f, 12f), stroke.width, StrokeCap.Round)
+                    drawCircle(color, radius = 1.4f * unit, center = p(12f, 12f))
+                }
+                LineIcon.Sparkle -> {
+                    val sparkle = Path().apply {
+                        moveTo(12f * unit, 2f * unit)
+                        quadraticTo(13.4f * unit, 10.6f * unit, 22f * unit, 12f * unit)
+                        quadraticTo(13.4f * unit, 13.4f * unit, 12f * unit, 22f * unit)
+                        quadraticTo(10.6f * unit, 13.4f * unit, 2f * unit, 12f * unit)
+                        quadraticTo(10.6f * unit, 10.6f * unit, 12f * unit, 2f * unit)
+                        close()
+                    }
+                    drawPath(sparkle, color)
+                }
+                LineIcon.Star -> {
+                    val star = Path().apply {
+                        for (i in 0 until 10) {
+                            val angle = -PI / 2 + i * PI / 5
+                            val r = if (i % 2 == 0) 10f else 4.3f
+                            val x = (12f + r * cos(angle)).toFloat() * unit
+                            val y = (12.8f + r * sin(angle)).toFloat() * unit
+                            if (i == 0) moveTo(x, y) else lineTo(x, y)
+                        }
+                        close()
+                    }
+                    drawPath(star, color)
+                }
+                LineIcon.Chip -> {
+                    drawCircle(color, radius = 8.5f * unit, center = p(12f, 12f), style = stroke)
+                    drawCircle(color, radius = 4f * unit, center = p(12f, 12f))
+                }
+                LineIcon.Alert -> {
+                    drawLine(color, p(12f, 5f), p(12f, 13.5f), stroke.width * 1.2f, StrokeCap.Round)
+                    drawCircle(color, radius = 1.6f * unit, center = p(12f, 18.5f))
                 }
             }
         }

@@ -2,6 +2,10 @@ package com.karasuma.fivelinks.fivelinks_cmp.ui.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,7 +19,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -37,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,10 +54,13 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.primaryColor
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * End-of-match screen modelled on the reference's win screen: cards rain down
- * around the edges while the match time takes centre stage.
+ * and circle the edges while the match time takes centre stage.
  */
 @Composable
 fun GameOverOverlay(
@@ -86,7 +93,7 @@ fun GameOverOverlay(
             // Swallow taps so nothing reaches the board underneath.
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
     ) {
-        ScatteredCards(progress = { intro.value })
+        OrbitingCards(intro = { intro.value })
 
         Column(
             modifier = Modifier
@@ -229,48 +236,116 @@ private fun StarDivider(modifier: Modifier = Modifier) {
     }
 }
 
-private class ScatterSpot(val x: Float, val y: Float, val rotation: Float, val card: Card)
-
-// Kept clear of the centre column (x 0.1..0.9, y 0.22..0.72) and the status bar;
-// side cards only peek in from the edges.
-private val ScatterSpots = listOf(
-    ScatterSpot(0.03f, 0.06f, -24f, Card(Suit.HEARTS, Rank.KING)),
-    ScatterSpot(0.26f, 0.045f, 18f, Card(Suit.SPADES, Rank.ACE)),
-    ScatterSpot(0.56f, 0.055f, -12f, Card(Suit.DIAMONDS, Rank.QUEEN)),
-    ScatterSpot(0.80f, 0.1f, 28f, Card(Suit.CLUBS, Rank.JACK)),
-    ScatterSpot(-0.08f, 0.3f, 38f, Card(Suit.SPADES, Rank.TEN)),
-    ScatterSpot(0.93f, 0.34f, -20f, Card(Suit.HEARTS, Rank.NINE)),
-    ScatterSpot(-0.07f, 0.56f, -14f, Card(Suit.DIAMONDS, Rank.SEVEN)),
-    ScatterSpot(0.92f, 0.6f, 22f, Card(Suit.SPADES, Rank.KING)),
-    ScatterSpot(0.05f, 0.76f, 26f, Card(Suit.CLUBS, Rank.FIVE)),
-    ScatterSpot(0.82f, 0.78f, -30f, Card(Suit.HEARTS, Rank.ACE)),
-    ScatterSpot(0.22f, 0.85f, -18f, Card(Suit.SPADES, Rank.QUEEN)),
-    ScatterSpot(0.46f, 0.87f, 12f, Card(Suit.DIAMONDS, Rank.TEN)),
-    ScatterSpot(0.68f, 0.84f, -8f, Card(Suit.CLUBS, Rank.KING))
+private val OrbitCards = listOf(
+    Card(Suit.HEARTS, Rank.KING) to -12f,
+    Card(Suit.SPADES, Rank.ACE) to 9f,
+    Card(Suit.DIAMONDS, Rank.QUEEN) to -6f,
+    Card(Suit.CLUBS, Rank.JACK) to 14f,
+    Card(Suit.SPADES, Rank.TEN) to -16f,
+    Card(Suit.HEARTS, Rank.NINE) to 8f,
+    Card(Suit.DIAMONDS, Rank.SEVEN) to -10f,
+    Card(Suit.SPADES, Rank.KING) to 12f,
+    Card(Suit.CLUBS, Rank.FIVE) to -8f,
+    Card(Suit.HEARTS, Rank.ACE) to 16f,
+    Card(Suit.SPADES, Rank.QUEEN) to -14f,
+    Card(Suit.DIAMONDS, Rank.TEN) to 6f,
+    Card(Suit.CLUBS, Rank.KING) to -9f
 )
 
-/** Cards that fall from above and settle around the screen edges. */
+/** One full lap takes this long: slow enough to stay in the background. */
+private const val OrbitPeriodMillis = 50_000
+
+/**
+ * Cards drop in, then circle the result clockwise along a rounded-rectangle loop
+ * on the screen edges (side cards only peek in), so they never cover the text or the buttons.
+ * Positions are only read while drawing, so the orbit causes no recomposition.
+ */
 @Composable
-private fun ScatteredCards(progress: () -> Float) {
+private fun OrbitingCards(intro: () -> Float) {
+    val orbit = rememberInfiniteTransition().animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(durationMillis = OrbitPeriodMillis, easing = LinearEasing))
+    )
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val density = LocalDensity.current
         val cardWidth = 50.dp
-        ScatterSpots.forEachIndexed { index, spot ->
-            PlayingCardFace(
-                card = spot.card,
-                width = cardWidth,
-                showJackRole = false,
-                modifier = Modifier
-                    .offset(x = maxWidth * spot.x, y = maxHeight * spot.y)
-                    .graphicsLayer {
-                        val local = ((progress() - index * 0.035f) / 0.55f).coerceIn(0f, 1f)
-                        val eased = FastOutSlowInEasing.transform(local)
-                        translationY = -(1f - eased) * size.height * 6f
-                        rotationZ = spot.rotation + (1f - eased) * 70f
-                        alpha = eased
-                        shadowElevation = 8.dp.toPx()
-                        shape = RoundedCornerShape(cardWidth * 0.14f)
-                    }
+        val loop = with(density) {
+            OrbitLoop(
+                left = 0f,
+                top = 74.dp.toPx(),
+                right = maxWidth.toPx(),
+                bottom = maxHeight.toPx() - 74.dp.toPx(),
+                radius = 96.dp.toPx()
             )
         }
+        val halfWidth = with(density) { cardWidth.toPx() } / 2f
+        val halfHeight = halfWidth * 1.5f
+        val dropDistance = with(density) { maxHeight.toPx() } * 0.7f
+
+        OrbitCards.forEachIndexed { index, (card, tilt) ->
+            PlayingCardFace(
+                card = card,
+                width = cardWidth,
+                showJackRole = false,
+                modifier = Modifier.graphicsLayer {
+                    val point = loop.pointAt((index.toFloat() / OrbitCards.size + orbit.value) * loop.length)
+                    val local = ((intro() - index * 0.035f) / 0.55f).coerceIn(0f, 1f)
+                    val eased = FastOutSlowInEasing.transform(local)
+                    translationX = point.x - halfWidth
+                    translationY = point.y - halfHeight - (1f - eased) * dropDistance
+                    rotationZ = point.angle + tilt + (1f - eased) * 70f
+                    alpha = eased
+                    shadowElevation = 8.dp.toPx()
+                    shape = RoundedCornerShape(cardWidth * 0.14f)
+                }
+            )
+        }
+    }
+}
+
+private class LoopPoint(val x: Float, val y: Float, val angle: Float)
+
+/** A clockwise rounded-rectangle loop walked at constant speed. */
+private class OrbitLoop(
+    private val left: Float,
+    private val top: Float,
+    private val right: Float,
+    private val bottom: Float,
+    radius: Float
+) {
+    private val r = minOf(radius, (right - left) / 2f, (bottom - top) / 2f).coerceAtLeast(1f)
+    private val straightH = right - left - 2 * r
+    private val straightV = bottom - top - 2 * r
+    private val arc = PI.toFloat() / 2f * r
+    val length = 2 * straightH + 2 * straightV + 4 * arc
+
+    /** Position and heading (degrees, 0 = moving right) at [distance] along the loop. */
+    fun pointAt(distance: Float): LoopPoint {
+        var d = distance % length
+        if (d < 0f) d += length
+        if (d < straightH) return LoopPoint(left + r + d, top, 0f)
+        d -= straightH
+        if (d < arc) return corner(right - r, top + r, -90f, d)
+        d -= arc
+        if (d < straightV) return LoopPoint(right, top + r + d, 90f)
+        d -= straightV
+        if (d < arc) return corner(right - r, bottom - r, 0f, d)
+        d -= arc
+        if (d < straightH) return LoopPoint(right - r - d, bottom, 180f)
+        d -= straightH
+        if (d < arc) return corner(left + r, bottom - r, 90f, d)
+        d -= arc
+        if (d < straightV) return LoopPoint(left, bottom - r - d, 270f)
+        d -= straightV
+        return corner(left + r, top + r, 180f, d)
+    }
+
+    /** Point [distance] into the quarter arc around (cx, cy) that starts at [startDegrees]. */
+    private fun corner(cx: Float, cy: Float, startDegrees: Float, distance: Float): LoopPoint {
+        val degrees = startDegrees + distance / r * (180f / PI.toFloat())
+        val radians = degrees * PI.toFloat() / 180f
+        return LoopPoint(cx + r * cos(radians), cy + r * sin(radians), degrees + 90f)
     }
 }

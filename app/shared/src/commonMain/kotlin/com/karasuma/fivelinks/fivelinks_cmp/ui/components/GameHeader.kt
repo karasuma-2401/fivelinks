@@ -64,9 +64,9 @@ fun GameHeader(
     val currentPlayer = gameState.currentPlayer
     val humanCount = gameState.players.count { !it.isAi }
     val title = when {
-        currentPlayer.isAi -> if (isAiThinking) "AI THINKING" else "AI TURN"
-        humanCount == 1 -> "YOUR TURN"
-        else -> "${currentPlayer.team.label()} TURN"
+        currentPlayer.isAi -> if (isAiThinking) "AI ĐANG NGHĨ" else "LƯỢT CỦA AI"
+        humanCount == 1 -> "LƯỢT CỦA BẠN"
+        else -> "LƯỢT ĐỘI ${currentPlayer.team.label()}"
     }
     val teams = gameState.players.map { it.team }.distinct()
 
@@ -74,7 +74,7 @@ fun GameHeader(
         val members = gameState.players.filter { it.team == team }
         return when {
             members.any { it.isAi } -> "AI"
-            humanCount == 1 -> "YOU"
+            humanCount == 1 -> "BẠN"
             else -> team.label()
         }
     }
@@ -100,7 +100,7 @@ fun GameHeader(
             ) { text ->
                 Text(
                     text = text,
-                    fontSize = 18.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -133,18 +133,21 @@ fun GameHeader(
                     color = team.primaryColor()
                 )
             }
-            Stat(value = "${gameState.deck.size}", label = "DECK")
-            Stat(value = "${gameState.turnNumber + 1}", label = "TURN")
-            Stat(value = formatElapsed(elapsedSeconds), label = "TIME")
+            Stat(value = "${gameState.deck.size}", label = "BỘ BÀI")
+            Stat(value = "${gameState.turnNumber + 1}", label = "LƯỢT")
+            Stat(value = formatElapsed(elapsedSeconds), label = "THỜI GIAN")
         }
     }
 }
 
-fun Team.label(): String = when (this) {
-    Team.BLUE -> "BLUE"
-    Team.RED -> "RED"
-    Team.GREEN -> "GREEN"
+/** Team colour name as shown to players ("Xanh", "Đỏ", ...). */
+fun Team.displayName(): String = when (this) {
+    Team.BLUE -> "Xanh"
+    Team.RED -> "Đỏ"
+    Team.GREEN -> "Xanh lá"
 }
+
+fun Team.label(): String = displayName().uppercase()
 
 /** mm:ss, or h:mm:ss past the hour. */
 fun formatElapsed(totalSeconds: Int): String {

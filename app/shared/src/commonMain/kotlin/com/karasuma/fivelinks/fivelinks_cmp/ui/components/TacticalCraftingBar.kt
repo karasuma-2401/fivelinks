@@ -8,13 +8,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,18 +30,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandDark
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.TeamBlue
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.TacticalAction
+
+private val MiniCardWidth = 26.dp
 
 @Composable
 fun TacticalCraftingBar(
@@ -65,111 +68,145 @@ fun TacticalCraftingBar(
     }
 }
 
-private data class TacticalCopy(
-    val accent: Color,
-    val title: String,
-    val subtitle: String,
-    val tag: String?
-)
-
 @Composable
 private fun TacticalCard(
     action: TacticalAction,
     onTriggerDivineWipe: () -> Unit
 ) {
-    val copy = when (action) {
-        is TacticalAction.PairWild -> TacticalCopy(
-            accent = TeamBlue,
-            title = "Ghép đôi · Jack 2 mắt",
-            subtitle = "Chạm vào một ô trống bất kỳ để đặt quân",
-            tag = "WILD"
-        )
-        is TacticalAction.ConnectorSnipe -> TacticalCopy(
-            accent = BrandRed,
-            title = "Đồng chất liền kề · Jack 1 mắt",
-            subtitle = "Chạm vào một quân đối thủ chưa khóa để bắn tỉa",
-            tag = "SNIPE"
-        )
-        is TacticalAction.DivineWipe -> TacticalCopy(
-            accent = GoldAccent,
-            title = "Thiên Phạt Hoàng Kim",
-            subtitle = "Sảnh đồng chất 5 lá: xóa sạch quân đối thủ",
-            tag = null
-        )
-    }
     val shape = RoundedCornerShape(18.dp)
+    val isNight = FiveLinksTheme.colors.isNight
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .shadow(if (FiveLinksTheme.colors.isNight) 0.dp else 10.dp, shape)
+            // Extra room below: a selected hand card lifts into this space.
+            .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 14.dp)
+            .shadow(if (isNight) 0.dp else 10.dp, shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, copy.accent.copy(alpha = 0.45f), shape)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .then(if (isNight) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, shape) else Modifier)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(copy.accent),
-            contentAlignment = Alignment.Center
-        ) {
-            LineIconView(icon = LineIcon.Bolt, color = PureWhite, modifier = Modifier.size(20.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // The "recipe": the selected cards and, for a combo, the jack it becomes.
+            when (action) {
+                is TacticalAction.PairWild -> CraftRecipe(listOf(action.card1, action.card2), LineIcon.Sparkle)
+                is TacticalAction.ConnectorSnipe -> CraftRecipe(listOf(action.card1, action.card2), LineIcon.Crosshair)
+                is TacticalAction.DivineWipe -> CardStack(action.cards.sortedBy { it.rank.value }, step = 20.dp)
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            val (title, subtitle) = when (action) {
+                is TacticalAction.PairWild -> "Ghép đôi" to "Chạm ô trống để đặt quân"
+                is TacticalAction.ConnectorSnipe -> "Đồng chất liền kề" to "Chạm quân đối thủ để bắn tỉa"
+                is TacticalAction.DivineWipe -> "Thiên Phạt Hoàng Kim" to "Xóa sạch toàn bộ quân đối thủ"
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = copy.title,
-                fontSize = 13.sp,
-                lineHeight = 17.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = copy.subtitle,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        if (copy.tag != null) {
-            Text(
-                text = copy.tag,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.sp,
-                color = copy.accent,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(copy.accent.copy(alpha = 0.12f))
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
-            )
-        } else {
+        // The legendary move gets a full-width trigger.
+        if (action is TacticalAction.DivineWipe) {
+            Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = onTriggerDivineWipe,
                 colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BrandDark),
                 shape = CircleShape,
-                contentPadding = PaddingValues(horizontal = 14.dp),
-                modifier = Modifier.height(36.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
             ) {
+                LineIconView(icon = LineIcon.Bolt, color = BrandDark, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "KÍCH HOẠT",
-                    fontSize = 11.sp,
+                    text = "KÍCH HOẠT THIÊN PHẠT",
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.sp
+                    letterSpacing = 1.5.sp
                 )
             }
         }
+    }
+}
+
+/** Two cards → the artificial jack they craft. */
+@Composable
+private fun CraftRecipe(cards: List<Card>, jackIcon: LineIcon) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        // Side by side so both ranks stay readable.
+        CardStack(cards, step = MiniCardWidth + 3.dp)
+        LineIconView(
+            icon = LineIcon.ArrowRight,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(14.dp)
+        )
+        CraftedJack(icon = jackIcon)
+    }
+}
+
+@Composable
+private fun CardStack(cards: List<Card>, step: Dp) {
+    val cardShape = RoundedCornerShape(MiniCardWidth * 0.22f)
+    Box(
+        modifier = Modifier
+            .width(MiniCardWidth + step * (cards.size - 1))
+            .height(MiniCardWidth * 1.25f)
+    ) {
+        cards.forEachIndexed { index, card ->
+            MiniCard(
+                card = card,
+                width = MiniCardWidth,
+                modifier = Modifier
+                    .offset(x = step * index)
+                    .shadow(if (index > 0 && step < MiniCardWidth) 3.dp else 0.dp, cardShape)
+            )
+        }
+    }
+}
+
+/** A jack face with its role icon: sparkle (place anywhere) or crosshair (snipe). */
+@Composable
+private fun CraftedJack(icon: LineIcon) {
+    val rankSize = with(LocalDensity.current) { (MiniCardWidth * 0.4f).toSp() }
+    val shape = RoundedCornerShape(MiniCardWidth * 0.22f)
+    val edge = FiveLinksTheme.colors.cardEdge
+    Column(
+        modifier = Modifier
+            .size(MiniCardWidth, MiniCardWidth * 1.25f)
+            .clip(shape)
+            .background(BrandDark)
+            .then(if (edge.alpha > 0f) Modifier.border(1.dp, edge, shape) else Modifier),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "J",
+            fontSize = rankSize,
+            lineHeight = rankSize,
+            fontWeight = FontWeight.Bold,
+            color = PureWhite
+        )
+        Spacer(modifier = Modifier.height(1.dp))
+        LineIconView(icon = icon, color = PureWhite, modifier = Modifier.size(MiniCardWidth * 0.36f), strokeWidth = 2.6f)
     }
 }
