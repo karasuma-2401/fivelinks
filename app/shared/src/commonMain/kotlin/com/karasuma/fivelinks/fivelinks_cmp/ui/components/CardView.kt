@@ -103,16 +103,6 @@ fun PlayingCardFace(
                 .padding(end = width * 0.08f, bottom = width * 0.07f)
                 .rotate(180f)
         )
-
-        if (showJackRole && card.isJack()) {
-            JackRoleTag(
-                card = card,
-                cardWidth = width,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(start = width * 0.07f, top = width * 0.66f)
-            )
-        }
     }
 }
 
@@ -147,33 +137,11 @@ private fun CardIndex(
 }
 
 /**
- * Jack role badge: sparkle for a two-eyed jack (place anywhere), crosshair for a
- * one-eyed jack (snipe). An icon fits the strip of a card that stays visible
- * while the hand overlaps; the rules dialog explains both.
+ * What a jack does: sparkle for a two-eyed jack (place anywhere), crosshair for a
+ * one-eyed jack (snipe). It sits in the part of the card that stays visible while
+ * the hand overlaps; the rules dialog explains both.
  */
 private fun Card.jackRoleIcon(): LineIcon = if (isTwoEyedJack()) LineIcon.Sparkle else LineIcon.Crosshair
-
-@Composable
-private fun JackRoleTag(
-    card: Card,
-    cardWidth: Dp,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .size(cardWidth * 0.27f)
-            .clip(CircleShape)
-            .background(PureWhite),
-        contentAlignment = Alignment.Center
-    ) {
-        LineIconView(
-            icon = card.jackRoleIcon(),
-            color = card.suit.cardBackground(),
-            modifier = Modifier.size(cardWidth * 0.18f),
-            strokeWidth = 2.6f
-        )
-    }
-}
 
 @Composable
 fun HandCardView(

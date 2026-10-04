@@ -98,20 +98,26 @@ private fun DrawScope.drawPlacementGlow(pulse: Float) {
     )
 }
 
-/** Targeting reticle over an opponent chip that can be sniped. */
+/**
+ * Lock-on brackets in the cell corners around an opponent chip that can be
+ * sniped; they breathe with the pulse. Corners stay clear of the chip's white rim.
+ */
 private fun DrawScope.drawCrosshair(pulse: Float) {
-    val color = Color.White.copy(alpha = 0.6f + 0.4f * pulse)
-    val ring = size.minDimension * 0.45f
-    val stroke = 1.8.dp.toPx()
-    drawCircle(color, ring, center, style = Stroke(width = stroke))
-    val tick = size.minDimension * 0.16f
-    listOf(Offset(0f, -1f), Offset(1f, 0f), Offset(0f, 1f), Offset(-1f, 0f)).forEach { dir ->
-        drawLine(
-            color = color,
-            start = center + dir * ring,
-            end = center + dir * (ring - tick),
-            strokeWidth = stroke,
-            cap = StrokeCap.Round
-        )
+    val color = Color.White.copy(alpha = 0.7f + 0.3f * pulse)
+    val stroke = 2.2.dp.toPx()
+    val inset = stroke / 2 + size.minDimension * (0.03f + 0.06f * (1f - pulse))
+    val arm = size.minDimension * 0.24f
+    val left = inset
+    val top = inset
+    val right = size.width - inset
+    val bottom = size.height - inset
+    listOf(
+        Offset(left, top) to Offset(1f, 1f),
+        Offset(right, top) to Offset(-1f, 1f),
+        Offset(left, bottom) to Offset(1f, -1f),
+        Offset(right, bottom) to Offset(-1f, -1f)
+    ).forEach { (corner, dir) ->
+        drawLine(color, corner, Offset(corner.x + dir.x * arm, corner.y), stroke, StrokeCap.Round)
+        drawLine(color, corner, Offset(corner.x, corner.y + dir.y * arm), stroke, StrokeCap.Round)
     }
 }
