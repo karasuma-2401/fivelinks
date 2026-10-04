@@ -20,3 +20,11 @@ node_modules/
 
 bin/
 **/bin/
+
+# Release signing: keep a private backup, never commit
+*.jks
+*.keystore
+keystore.properties
+
+# APKs handed out to testers
+/release/

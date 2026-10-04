@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -20,6 +21,19 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
 }
 
+// The game plays with the heuristic AI. The ONNX model (~260 MB) and its runtime only
+// serve :server, so they stay out of the APK (see also packaging below).
+configurations.configureEach {
+    exclude(group = "com.microsoft.onnxruntime")
+}
+
+// Release signing comes from keystore.properties at the project root (git-ignored).
+// Without it, release builds are produced unsigned.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.karasuma.fivelinks.fivelinks_cmp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -31,14 +45,28 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+    signingConfigs {
+        if (!keystoreProperties.isEmpty) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "models/**"
         }
     }
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     compileOptions {
