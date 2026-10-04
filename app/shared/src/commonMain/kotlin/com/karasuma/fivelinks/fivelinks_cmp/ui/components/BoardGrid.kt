@@ -34,6 +34,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +59,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.ChipSequence
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Move
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
+import com.karasuma.fivelinks.fivelinks_cmp.rememberImpactHaptics
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandDark
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
@@ -70,6 +72,7 @@ import kotlin.math.hypot
 import kotlin.math.sin
 import kotlin.random.Random
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -101,6 +104,7 @@ fun BoardGrid(
     )
     val colors = FiveLinksTheme.colors
     val haptic = LocalHapticFeedback.current
+    val impact = rememberImpactHaptics()
 
     // Chips removed by a snipe or by Thiên Phạt burst instead of vanishing. A snipe
     // is a lightning strike on the target; Thiên Phạt sends a golden shockwave.
@@ -128,7 +132,7 @@ fun BoardGrid(
         }
         // Launched outside this effect so the next move cannot cut the animation short.
         if (isWipe) {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            impact.quake()
             scope.launch {
                 wave.snapTo(0f)
                 wave.animateTo(1f, tween(durationMillis = 1800, easing = LinearEasing))
@@ -143,7 +147,7 @@ fun BoardGrid(
             }
             scope.launch {
                 delay(StrikeLandMillis.toLong())
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                impact.strike()
             }
         }
         if (gone.isNotEmpty()) {
@@ -151,6 +155,13 @@ fun BoardGrid(
                 vanishing.value = gone
                 burstIsWipe.value = isWipe
                 vanish.snapTo(0f)
+                if (!isWipe) {
+                    // Vibrate the moment the cracked chip breaks apart.
+                    launch {
+                        snapshotFlow { vanish.value }.first { it >= ShatterCrackPhase }
+                        impact.shatter()
+                    }
+                }
                 // A sniped chip holds until the bolt lands, then cracks and shatters.
                 // The delay is part of the animation, so it follows the system animation speed.
                 val spec = if (isWipe) {
@@ -181,11 +192,22 @@ fun BoardGrid(
             modifier = Modifier
                 .size(boardDim)
                 .graphicsLayer {
-                    // A sharp, decaying shake: strong for Thiên Phạt, a jolt for a snipe.
-                    val waveShake = 1f - (wave.value / 0.4f).coerceIn(0f, 1f)
-                    val strikeShake = 1f - ((strikeProgress.value - 0.1f) / 0.25f).coerceIn(0f, 1f)
-                    translationX = sin(wave.value * 70f) * waveShake * 7.dp.toPx() +
-                        if (strikeProgress.value in 0.1f..0.35f) sin(strikeProgress.value * 120f) * strikeShake * 3.dp.toPx() else 0f
+                    // Thiên Phạt: a long, heavy quake. Snipe: a small bump as the bolt
+                    // lands, then a sharp shake when the chip shatters.
+                    val quake = wave.value / 0.5f
+                    val shatter = if (!burstIsWipe.value && vanishing.value.isNotEmpty()) {
+                        (vanish.value - ShatterCrackPhase) / 0.4f
+                    } else {
+                        1f
+                    }
+                    val bump = (strikeProgress.value - 0.1f) / 0.12f
+                    val quakePx = 11.dp.toPx()
+                    val shatterPx = 7.dp.toPx()
+                    translationX = shake(quake, 12f, 0f) * quakePx + shake(shatter, 7f, 0f) * shatterPx
+                    translationY = shake(quake, 9f, 0.3f) * quakePx * 0.6f +
+                        shake(shatter, 5f, 0.25f) * shatterPx * 0.7f +
+                        bump(bump) * 3.dp.toPx()
+                    rotationZ = shake(quake, 7f, 0.15f) * 1.6f + shake(shatter, 6f, 0.1f) * 1.1f
                 }
                 .shadow(if (colors.isNight) 0.dp else 16.dp, frameShape)
                 .clip(frameShape)
@@ -420,6 +442,19 @@ private fun boltPath(points: List<Offset>, reveal: Float, cell: Float): Path {
     }
     return path
 }
+
+/**
+ * One axis of a decaying shake at [t] (0..1, still outside): [cycles] wobbles
+ * that fade out quadratically, offset by [phase] (a fraction of a cycle).
+ */
+private fun shake(t: Float, cycles: Float, phase: Float): Float {
+    if (t <= 0f || t >= 1f) return 0f
+    val fade = (1f - t) * (1f - t)
+    return sin((t * cycles + phase) * 2f * PI.toFloat()) * fade
+}
+
+/** A single push down and back at [t] (0..1, still outside). */
+private fun bump(t: Float): Float = if (t <= 0f || t >= 1f) 0f else sin(t * PI.toFloat())
 
 /** A chip's own burst progress: chips near the centre go first. */
 private fun burstProgress(progress: Float, row: Int, col: Int): Float {
