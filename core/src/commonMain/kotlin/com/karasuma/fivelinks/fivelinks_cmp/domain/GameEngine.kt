@@ -51,6 +51,23 @@ object GameEngine {
         return state.copy(currentPlayerIndex = nextPlayerIndex, turnNumber = state.turnNumber + 1)
     }
 
+    /**
+     * Late in a game the deck can run dry and leave the player to move with nothing
+     * playable. They pass; if nobody can play any more, the game ends in a draw.
+     * Call it after every turn change (moves, timeouts) and at the start of a game.
+     */
+    fun skipStuckTurns(state: GameState): SkippedTurns {
+        if (state.isGameOver) return SkippedTurns(state, emptyList())
+        var current = state
+        val passed = mutableListOf<PlayerId>()
+        repeat(state.players.size) {
+            if (legalMoves(current, current.currentPlayer.id).isNotEmpty()) return SkippedTurns(current, passed)
+            passed += current.currentPlayer.id
+            current = advanceTurn(current)
+        }
+        return SkippedTurns(current.copy(isDraw = true), passed)
+    }
+
     fun applyPlace(state: GameState, move: Move.Place): GameState {
         val player = state.players.first { it.id == move.playerId }
         val chipsAfter = state.chips.place(move.position, player.team)
@@ -180,7 +197,7 @@ object GameEngine {
     }
 
     fun legalMoves(state: GameState, playerId: PlayerId): List<Move> {
-        if (state.winner != null) return emptyList()
+        if (state.isGameOver) return emptyList()
         val player = state.players.firstOrNull { it.id == playerId } ?: return emptyList()
         if (state.currentPlayer.id != playerId) return emptyList()
 
@@ -255,3 +272,6 @@ object GameEngine {
         return moves
     }
 }
+
+/** Result of [GameEngine.skipStuckTurns]: the state to play on and who had to pass, in order. */
+data class SkippedTurns(val state: GameState, val passed: List<PlayerId>)

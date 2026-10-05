@@ -17,10 +17,12 @@ data class GameState(
     val winner: Team? = null,
     val turnNumber: Int = 0,
     val lastMove: Move? = null,
+    /** Nobody can move any more (see [GameEngine.skipStuckTurns]): the game ends without a winner. */
+    val isDraw: Boolean = false,
 ) {
     val currentPlayer: Player get() = players[currentPlayerIndex]
 
-    val isGameOver: Boolean get() = winner != null
+    val isGameOver: Boolean get() = winner != null || isDraw
 
     fun handOf(player: Player): Hand = hands[player.id]!!
 

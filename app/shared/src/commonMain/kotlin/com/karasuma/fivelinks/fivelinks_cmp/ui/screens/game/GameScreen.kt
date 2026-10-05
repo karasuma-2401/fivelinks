@@ -106,7 +106,7 @@ fun GameScreen(
     } else {
         currentPlayer
     }
-    val isPlayerTurn = !currentPlayer.isAi && !uiState.isAiThinking && !uiState.isGameOver
+    val isPlayerTurn = !currentPlayer.isAi && !uiState.isAiThinking && !uiState.isPassingTurn && !uiState.isGameOver
 
     // Only ask for confirmation when there is progress to lose.
     val gameInProgress = gameState.turnNumber > 0 && !uiState.isGameOver

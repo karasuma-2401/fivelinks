@@ -60,7 +60,7 @@ class GameViewModel(
 
     fun onCardClick(index: Int) {
         val current = _uiState.value
-        if (current.isAiThinking || current.isGameOver) return
+        if (current.isAiThinking || current.isPassingTurn || current.isGameOver) return
 
         val currentPlayer = current.gameState.currentPlayer
         if (currentPlayer.isAi) return
@@ -167,7 +167,7 @@ class GameViewModel(
 
     fun onCellClick(position: BoardPosition) {
         val current = _uiState.value
-        if (current.isAiThinking || current.isGameOver) return
+        if (current.isAiThinking || current.isPassingTurn || current.isGameOver) return
 
         val player = current.gameState.currentPlayer
         if (player.isAi) return
@@ -258,25 +258,30 @@ class GameViewModel(
     }
 
     /**
-     * Late in a game the deck can run dry and leave a player with nothing playable:
-     * they pass. If nobody can play, the game ends in a draw.
+     * A player with nothing playable passes; if nobody can play, the game is a draw.
+     * The pass gets a beat of its own, like an AI move, so the screen can announce it
+     * after the move before it. Returns false when the player to move can play.
      */
-    private fun passWhileStuck() {
-        val start = _uiState.value.gameState
-        if (start.isGameOver) return
-        var state = start
-        repeat(state.players.size) {
-            if (GameEngine.legalMoves(state, state.currentPlayer.id).isNotEmpty()) {
-                if (state !== start) _uiState.update { it.copy(gameState = state) }
-                return
+    private fun passIfStuck(): Boolean {
+        val stuck = _uiState.value.gameState
+        val skipped = GameEngine.skipStuckTurns(stuck)
+        if (skipped.passed.isEmpty()) return false
+
+        _uiState.update { it.copy(isPassingTurn = true) }
+        viewModelScope.launch {
+            delay(1000)
+            // A new game may have started in the meantime.
+            if (_uiState.value.gameState !== stuck) return@launch
+            _uiState.update {
+                it.copy(gameState = skipped.state, isGameOver = skipped.state.isGameOver, isPassingTurn = false)
             }
-            state = GameEngine.advanceTurn(state)
+            checkAndTriggerAi(aiDelayMillis = 1100) // Leave the pass notice up a little longer
         }
-        _uiState.update { it.copy(gameState = state, isGameOver = true, isAiThinking = false) }
+        return true
     }
 
-    private fun checkAndTriggerAi() {
-        passWhileStuck()
+    private fun checkAndTriggerAi(aiDelayMillis: Long = 450) {
+        if (passIfStuck()) return
         val current = _uiState.value
         if (current.isGameOver) return
 
@@ -284,7 +289,7 @@ class GameViewModel(
         if (currentPlayer.isAi) {
             viewModelScope.launch {
                 _uiState.update { it.copy(isAiThinking = true) }
-                delay(450) // Subtle delay for smooth human-friendly interaction
+                delay(aiDelayMillis) // Subtle delay for smooth human-friendly interaction
 
                 val aiMove = withContext(Dispatchers.Default) {
                     runCatching {

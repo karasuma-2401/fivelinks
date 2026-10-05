@@ -17,6 +17,8 @@ data class GameUiState(
     val validPlacementPositions: Set<BoardPosition> = emptySet(),
     val validSnipePositions: Set<BoardPosition> = emptySet(),
     val isAiThinking: Boolean = false,
+    /** The player to move has nothing playable and is about to pass. */
+    val isPassingTurn: Boolean = false,
     val errorMessage: String? = null,
     val isGameOver: Boolean = false
 )
