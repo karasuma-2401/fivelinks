@@ -49,6 +49,15 @@ sealed interface ServerMessage {
         val players: List<RoomPlayer>,
     ) : ServerMessage
 
+    /** The room no longer exists; whoever was in it is back in the lobby. */
+    @Serializable
+    @SerialName("room_closed")
+    data class RoomClosed(
+        override val messageId: String,
+        val roomCode: String,
+        val reason: RoomCloseReason,
+    ) : ServerMessage
+
     /** Full sync: sent when a game starts and when a player reconnects mid-game. */
     @Serializable
     @SerialName("game_snapshot")

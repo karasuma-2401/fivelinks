@@ -2,7 +2,7 @@
 
 > Dự án: **fivelinks-cmp**  
 > Vị trí: `core/src/commonMain/kotlin/com/karasuma/fivelinks/fivelinks_cmp/protocol/`  
-> Cập nhật: 05/10/2026 (giao thức **1.1**: phòng chơi online 1 đấu 1)
+> Cập nhật: 05/10/2026 (giao thức **1.1**: phòng chơi online 1 đấu 1, server WebSocket `/ws`)
 
 ---
 
@@ -83,6 +83,7 @@ Vì nằm trong module **`core` → `commonMain`**, code ở đây được biê
 | `StateUpdate` | `"state_update"` | Ván đấu thay đổi | `view`, `events`, `turnTimeLeftMs` |
 | `PlayerConnection` | `"player_connection"` | Một người rớt mạng / vào lại | `playerId`, `connected`, `forfeitInMs?` (đếm ngược tới lúc xử thua) |
 | `GameOver` | `"game_over"` | Ván kết thúc (gửi sau `StateUpdate` cuối) | `result` (`GameResult`) |
+| `RoomClosed` | `"room_closed"` | Phòng không còn nữa (phòng chờ quá 10 phút không ai vào) | `roomCode`, `reason` (`RoomCloseReason`) |
 
 **Ví dụ JSON (Rejected):**
 ```json
@@ -114,11 +115,16 @@ Bàn cờ hiện luôn là bố cục chuẩn (`Board.standard`), nhưng vẫn �
 
 ### 3.4. `Room.kt` và `GameEvents.kt`
 
-**`RoomSettings`** — người tạo phòng chọn: `sequenceToWin` (1 hoặc 2 hàng), `tacticalCrafting` (bật/tắt chế độ chiến thuật).
+**`RoomSettings`** — người tạo phòng chọn:
+- `sequenceToWin`: 1 hoặc 2 hàng (server từ chối giá trị khác)
+- `tacticalCrafting`: bật/tắt chế độ chiến thuật
+- `firstPlayer`: ai đi trước ván đầu: `HOST` (chủ phòng), `GUEST` (người vào bằng mã) hoặc `RANDOM` (mặc định). Khi chơi lại, người đi sau ở ván trước được đi trước.
 
 **`RoomStatus`** — `WAITING` (chờ người thứ 2) → `PLAYING` → `FINISHED` (có thể xin chơi lại).
 
 **`RoomPlayer`** — `playerId`, `name`, `team`, `connected`, `wantsRematch`.
+
+**`RoomCloseReason`** — lý do trong `RoomClosed`: `EXPIRED` (phòng chờ quá 10 phút không ai vào).
 
 **`GameEvent`** (trong `StateUpdate.events`, theo thứ tự xảy ra):
 
@@ -193,7 +199,7 @@ fun majorCompatible(remote: String): Boolean
 
 ```kotlin
 val ProtocolJson: Json = Json {
-    prettyPrint = true
+    prettyPrint = false           // JSON gọn: mỗi tin nhắn một dòng
     ignoreUnknownKeys = true      // Bỏ qua trường lạ khi deserialize
     isLenient = true
     encodeDefaults = true
@@ -249,16 +255,36 @@ Quá 60 giây chưa vào lại ─▶ GameOver(winner = A, FORFEIT_DISCONNECTED)
 
 ## 5. Tích hợp hiện tại trong dự án
 
-**Server** (`server/.../Application.kt`):
-- Dùng `ProtocolJson` cho ContentNegotiation
-- Có endpoint HTTP: `GET /protocol/version` → trả về `{ major, minor, name }`
+**Server** (`server/.../Application.kt`, gói `online`):
+- Dùng `ProtocolJson` cho ContentNegotiation và cho WebSocket
+- Endpoint HTTP: `GET /protocol/version` → trả về `{ major, minor, name }`
+- **WebSocket `/ws`**: mỗi người chơi một kết nối, mỗi khung text là một tin nhắn JSON (`ClientMessage` gửi lên, `ServerMessage` gửi về). `GameServer` xử lý toàn bộ phòng chơi (mục 5.1).
 
 **Core:**
 - `GameEngine.skipStuckTurns(state)`: người tới lượt không còn nước nào đánh được thì bỏ lượt; không ai đánh được → `GameState.isDraw = true`. App (chơi offline) đang dùng; server sẽ gọi sau mỗi lần đổi lượt.
 
+### 5.1. Luật phòng chơi phía server (`GameServer`)
+
+| Mục | Quy tắc |
+|---|---|
+| Mã phòng | 6 ký tự từ `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (không có O/0, I/1). Khi nhập: không phân biệt hoa thường, bỏ qua khoảng trắng và dấu `-` |
+| Phòng chờ | Quá **10 phút** không ai vào → `RoomClosed(EXPIRED)` rồi xóa phòng |
+| Đội | Chủ phòng là **Xanh** (`BLUE`), người vào bằng mã là **Đỏ** (`RED`) |
+| Người đi trước | Theo `RoomSettings.firstPlayer`; chơi lại thì **đổi người đi trước** |
+| Đồng hồ lượt | **60 giây**; hết giờ → bỏ lượt (`TurnPassed`, `TIMEOUT`). Mỗi nước đi hoặc lượt bỏ đều đặt lại đồng hồ |
+| Hết nước đi | Sau mỗi lượt server gọi `GameEngine.skipStuckTurns` → `TurnPassed(NO_LEGAL_MOVES)`; không ai đi được nữa → hòa (`DRAW_NO_MOVES`) |
+| Rớt mạng giữa ván | Đối thủ nhận `PlayerConnection(connected=false, forfeitInMs=60000)`. Vào lại trong **60 giây** (gửi `Hello` kèm `sessionToken`) → nhận `Welcome`, `RoomState`, `GameSnapshot`; quá hạn → xử thua `FORFEIT_DISCONNECTED` |
+| Rời phòng | Đang chơi → xử thua `FORFEIT_LEFT`; ván đã xong → người còn lại nhận `RoomState` chỉ còn mình (không chơi lại được nữa) |
+| Chơi lại | Cả hai gửi `RequestRematch` → ván mới, chia bài lại |
+| Phiên | Mỗi phiên chỉ ở **một phòng**; tạo hoặc vào phòng mới khi phòng cũ đã xong thì tự rời phòng cũ. Mở kết nối mới với cùng `sessionToken` → kết nối cũ bị đóng |
+| Kết nối | Ping mỗi 15 giây, 30 giây không phản hồi thì đóng; mỗi khung tin nhắn tối đa 64 KB |
+| Dọn dẹp | Phòng đã xong mà cả hai đều rời đi quá 60 giây → xóa; phiên không còn kết nối và không ở phòng nào quá 30 phút → xóa |
+
+Khi ván kết thúc, thứ tự tin nhắn là `StateUpdate` (cuối) → `GameOver` → `RoomState(FINISHED)`.
+
 **Chưa hoàn thiện:**
-- Server **chưa** có WebSocket và chưa xử lý phòng chơi (Giai đoạn 1 của kế hoạch online)
-- App chưa kết nối server (Giai đoạn 2–3)
+- App chưa kết nối server (Giai đoạn 2–3), chưa tự nối lại khi rớt mạng hoặc chạy nền (Giai đoạn 4)
+- Chưa giới hạn tần suất gửi tin (rate limit) và số phòng tối đa
 
 ---
 
@@ -281,7 +307,7 @@ Khi thêm tính năng, mở rộng theo pattern hiện có:
 |-----------|-------------------|
 | Phiên bản hiện tại | `1.1` |
 | Module chứa protocol | `core` (`commonMain`) |
-| Định dạng wire | JSON |
+| Định dạng wire | JSON gọn, mỗi khung WebSocket một tin nhắn |
 | Trường phân loại tin nhắn | `"type"` |
 | Kiểm tra tương thích | Chỉ so sánh **MAJOR** |
 | Handshake | `Hello` → `Welcome` hoặc `Rejected` |
@@ -290,3 +316,6 @@ Khi thêm tính năng, mở rộng theo pattern hiện có:
 | Che thông tin | `state.viewFor(playerId)` — không gửi bài đối thủ, bộ bài, seed |
 | Rớt mạng | Giữ chỗ **60 giây**, quá hạn **xử thua** |
 | Hết giờ lượt | **Bỏ lượt** (`TurnPassed`, `TIMEOUT`) |
+| Endpoint | WebSocket `/ws` |
+| Người đi trước | Chủ phòng chọn (`firstPlayer`); chơi lại thì đổi |
+| Phòng chờ | Quá 10 phút không ai vào → `RoomClosed(EXPIRED)` |

@@ -9,6 +9,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -40,7 +41,9 @@ class ProtocolMessagesTest {
         val messages = mapOf(
             "hello" to ClientMessage.Hello("1", playerName = "An", sessionToken = "token-1"),
             "ping" to ClientMessage.Ping("2", clientTime = 1_700_000_000_000),
-            "create_room" to ClientMessage.CreateRoom("3", RoomSettings(sequenceToWin = 1, tacticalCrafting = false)),
+            "create_room" to ClientMessage.CreateRoom(
+                "3", RoomSettings(sequenceToWin = 1, tacticalCrafting = false, firstPlayer = FirstPlayer.GUEST),
+            ),
             "join_room" to ClientMessage.JoinRoom("4", roomCode = "K7QP2M"),
             "submit_move" to ClientMessage.SubmitMove("5", move = firstMove, turnNumber = 0),
             "leave_room" to ClientMessage.LeaveRoom("6"),
@@ -71,6 +74,7 @@ class ProtocolMessagesTest {
             ),
             "player_connection" to ServerMessage.PlayerConnection("7", "guest", connected = false, forfeitInMs = 60_000),
             "game_over" to ServerMessage.GameOver("8", GameResult(Team.BLUE, GameEndReason.FORFEIT_DISCONNECTED)),
+            "room_closed" to ServerMessage.RoomClosed("9", "K7QP2M", RoomCloseReason.EXPIRED),
         )
         for ((type, message) in messages) assertEquals(type, typeOf(roundTrip(message)))
     }
@@ -102,6 +106,22 @@ class ProtocolMessagesTest {
             """{"type":"rejected","messageId":"c","reason":"INTERNAL_ERROR","message":"x"}""",
         ) as ServerMessage.Rejected
         assertNull(rejected.inReplyTo)
+    }
+
+    @Test
+    fun settingsWithoutFirstPlayer_startRandomly() {
+        val create = ProtocolJson.decodeFromString(
+            ClientMessage.serializer(),
+            """{"type":"create_room","messageId":"d","settings":{"sequenceToWin":1}}""",
+        ) as ClientMessage.CreateRoom
+        assertEquals(FirstPlayer.RANDOM, create.settings.firstPlayer)
+        assertEquals(true, create.settings.tacticalCrafting)
+    }
+
+    @Test
+    fun wireFormat_isCompact() {
+        val json = ProtocolJson.encodeToString(ServerMessage.serializer(), ServerMessage.Pong("1", serverTime = 5))
+        assertFalse('\n' in json, "one message per line, no pretty printing")
     }
 
     @Test

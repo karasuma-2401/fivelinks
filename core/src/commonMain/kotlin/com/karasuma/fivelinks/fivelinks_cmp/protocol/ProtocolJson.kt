@@ -3,7 +3,7 @@ package com.karasuma.fivelinks.fivelinks_cmp.protocol
 import kotlinx.serialization.json.Json
 
 val ProtocolJson: Json = Json {
-    prettyPrint = true
+    prettyPrint = false
     ignoreUnknownKeys = true
     isLenient = true
     encodeDefaults = true

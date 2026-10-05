@@ -9,7 +9,18 @@ import kotlinx.serialization.Serializable
 data class RoomSettings(
     val sequenceToWin: Int = 2,
     val tacticalCrafting: Boolean = true,
+    /** Who starts the first game; rematches then alternate. */
+    val firstPlayer: FirstPlayer = FirstPlayer.RANDOM,
 )
+
+@Serializable
+enum class FirstPlayer {
+    /** The room creator. */
+    HOST,
+    /** The player who joined with the code. */
+    GUEST,
+    RANDOM,
+}
 
 @Serializable
 enum class RoomStatus {
@@ -28,3 +39,9 @@ data class RoomPlayer(
     val connected: Boolean = true,
     val wantsRematch: Boolean = false,
 )
+
+@Serializable
+enum class RoomCloseReason {
+    /** Nobody joined the waiting room in time. */
+    EXPIRED,
+}
