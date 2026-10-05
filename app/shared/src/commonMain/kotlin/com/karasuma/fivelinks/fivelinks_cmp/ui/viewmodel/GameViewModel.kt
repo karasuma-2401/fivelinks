@@ -257,7 +257,26 @@ class GameViewModel(
         }
     }
 
+    /**
+     * Late in a game the deck can run dry and leave a player with nothing playable:
+     * they pass. If nobody can play, the game ends in a draw.
+     */
+    private fun passWhileStuck() {
+        val start = _uiState.value.gameState
+        if (start.isGameOver) return
+        var state = start
+        repeat(state.players.size) {
+            if (GameEngine.legalMoves(state, state.currentPlayer.id).isNotEmpty()) {
+                if (state !== start) _uiState.update { it.copy(gameState = state) }
+                return
+            }
+            state = GameEngine.advanceTurn(state)
+        }
+        _uiState.update { it.copy(gameState = state, isGameOver = true, isAiThinking = false) }
+    }
+
     private fun checkAndTriggerAi() {
+        passWhileStuck()
         val current = _uiState.value
         if (current.isGameOver) return
 

@@ -18,9 +18,19 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.primaryColor
  */
 internal fun moveNotice(previous: GameState, current: GameState, id: Long): GameNotice? {
     if (current.turnNumber <= previous.turnNumber || current.isGameOver) return null
+    val soloVsAi = current.players.count { !it.isAi } == 1
+    // A turn went by without a new move: that player had nothing playable.
+    if (current.lastMove == previous.lastMove) {
+        val passer = previous.currentPlayer
+        return GameNotice(
+            id = id,
+            text = "${actorName(passer.team, current, soloVsAi)} hết nước đi, bỏ lượt",
+            accent = passer.team.primaryColor(),
+            icon = LineIcon.Restart
+        )
+    }
     val move = current.lastMove ?: return null
     val mover = current.players.firstOrNull { it.id == move.playerId } ?: return null
-    val soloVsAi = current.players.count { !it.isAi } == 1
 
     // A completed sequence matters more than the move that made it.
     val newSequence = current.completedSequence.firstOrNull { it !in previous.completedSequence }

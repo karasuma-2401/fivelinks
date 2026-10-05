@@ -121,6 +121,8 @@ fun BoardGrid(
         lastSeen[0] = gameState
         val move = gameState.lastMove
         if (gameState.turnNumber <= before.turnNumber) return@LaunchedEffect
+        // A passed turn repeats the previous move; do not replay its effects.
+        if (gameState.lastMove == before.lastMove) return@LaunchedEffect
         if (move !is Move.Remove && move !is Move.CraftRemove && move !is Move.DivineWipe) return@LaunchedEffect
 
         val isWipe = move is Move.DivineWipe
