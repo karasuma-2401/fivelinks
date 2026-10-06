@@ -39,6 +39,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.components.MessageBox
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.RulesDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.TacticalCraftingBar
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
+import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameController
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameViewModel
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -51,21 +52,21 @@ private enum class PendingConfirm {
 
 @Composable
 fun GameScreen(
-    viewModel: GameViewModel,
+    controller: GameController,
     onExitToMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by controller.uiState.collectAsState()
     var showRules by remember { mutableStateOf(false) }
     var pendingConfirm by remember { mutableStateOf<PendingConfirm?>(null) }
-    var notice by remember(viewModel) { mutableStateOf<GameNotice?>(null) }
+    var notice by remember(controller) { mutableStateOf<GameNotice?>(null) }
     var noticeShownAt by remember { mutableStateOf(TimeSource.Monotonic.markNow()) }
 
     // Match clock: ticks only while the game is live and the app is in the foreground.
-    var elapsedSeconds by remember(viewModel) { mutableIntStateOf(0) }
+    var elapsedSeconds by remember(controller) { mutableIntStateOf(0) }
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val clockRunning = !uiState.isGameOver && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
-    LaunchedEffect(viewModel, clockRunning) {
+    LaunchedEffect(controller, clockRunning) {
         if (!clockRunning) return@LaunchedEffect
         while (true) {
             delay(1000)
@@ -73,13 +74,13 @@ fun GameScreen(
         }
     }
     val restartGame = {
-        viewModel.startNewGame()
+        controller.startNewGame()
         elapsedSeconds = 0
         notice = null
     }
 
     // Match commentary: compare each new state with the previous one.
-    val lastSeenState = remember(viewModel) { mutableStateOf(uiState.gameState) }
+    val lastSeenState = remember(controller) { mutableStateOf(uiState.gameState) }
     LaunchedEffect(uiState.gameState) {
         val next = moveNotice(lastSeenState.value, uiState.gameState, id = (notice?.id ?: 0L) + 1)
         lastSeenState.value = uiState.gameState
@@ -149,7 +150,7 @@ fun GameScreen(
                     gameState = gameState,
                     validPlacementPositions = uiState.validPlacementPositions,
                     validSnipePositions = uiState.validSnipePositions,
-                    onCellClick = { pos -> viewModel.onCellClick(pos) }
+                    onCellClick = { pos -> controller.onCellClick(pos) }
                 )
                 GameNoticeBanner(
                     notice = notice,
@@ -159,7 +160,7 @@ fun GameScreen(
 
             TacticalCraftingBar(
                 tacticalAction = uiState.activeTacticalAction,
-                onTriggerDivineWipe = { viewModel.triggerDivineWipe() }
+                onTriggerDivineWipe = { controller.triggerDivineWipe() }
             )
 
             HandView(
@@ -168,8 +169,8 @@ fun GameScreen(
                 selectedIndices = uiState.selectedCardIndices,
                 gameState = gameState,
                 isInteractive = isPlayerTurn,
-                onCardClick = { index -> viewModel.onCardClick(index) },
-                onSwapDeadCard = { index -> viewModel.swapDeadCard(index) }
+                onCardClick = { index -> controller.onCardClick(index) },
+                onSwapDeadCard = { index -> controller.swapDeadCard(index) }
             )
         }
 
@@ -222,7 +223,7 @@ fun GameScreen(
 @Preview(showSystemUi = true, showBackground = true)
 fun GameScreenPreview() {
     GameScreen(
-        viewModel = GameViewModel(),
+        controller = GameViewModel(),
         onExitToMenu = {},
         modifier = Modifier.fillMaxSize()
     )

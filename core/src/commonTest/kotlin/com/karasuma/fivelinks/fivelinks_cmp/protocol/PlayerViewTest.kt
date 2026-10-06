@@ -10,6 +10,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class PlayerViewTest {
 
@@ -62,6 +63,19 @@ class PlayerViewTest {
         assertEquals(state.turnNumber, view.turnNumber)
         assertEquals(state.chips, view.chips)
         assertFalse(view.isGameOver)
+    }
+
+    @Test
+    fun rebuiltState_allowsTheSameMovesAsTheServer() {
+        val state = onlineGame()
+
+        val rebuilt = state.viewFor("host").toGameState(state.board)
+
+        assertEquals(GameEngine.legalMoves(state, "host"), GameEngine.legalMoves(rebuilt, "host"))
+        assertEquals(state.hands.getValue("host"), rebuilt.hands.getValue("host"))
+        assertTrue(rebuilt.hands.getValue("guest").cards.isEmpty())
+        assertEquals(state.deck.size, rebuilt.deck.size)
+        assertEquals(state.currentPlayer, rebuilt.currentPlayer)
     }
 
     @Test

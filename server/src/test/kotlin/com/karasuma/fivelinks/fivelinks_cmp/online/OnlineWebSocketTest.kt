@@ -12,6 +12,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.protocol.PlayerView
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ProtocolJson
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.RoomSettings
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ServerMessage
+import com.karasuma.fivelinks.fivelinks_cmp.protocol.toGameState
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
@@ -124,7 +125,7 @@ class OnlineWebSocketTest {
                 }
                 val view = lastView ?: continue
                 if (result == null && !view.isGameOver && view.currentPlayer.id == playerId) {
-                    val moves = GameEngine.legalMoves(view.asGameState(checkNotNull(board)), playerId)
+                    val moves = GameEngine.legalMoves(view.toGameState(checkNotNull(board)), playerId)
                     send(ClientMessage.SubmitMove(nextId(), moves.random(random), view.turnNumber))
                     movesPlayed++
                 }

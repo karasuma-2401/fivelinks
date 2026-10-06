@@ -1,14 +1,18 @@
 package com.karasuma.fivelinks.fivelinks_cmp.protocol
 
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Board
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.domain.ChipMap
 import com.karasuma.fivelinks.fivelinks_cmp.domain.ChipSequence
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Deck
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameConfig
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Hand
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Move
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
 import com.karasuma.fivelinks.fivelinks_cmp.domain.PlayerId
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Rank
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import kotlinx.serialization.Serializable
 
@@ -62,3 +66,26 @@ fun GameState.viewFor(playerId: PlayerId): PlayerView {
         lastMove = lastMove,
     )
 }
+
+/**
+ * A [GameState] rebuilt from what the viewer can see, so clients can use the shared rules
+ * and screens. Only the viewer's hand is real: other hands are empty and the deck holds
+ * stand-in cards of the right count. Enough for `GameEngine.legalMoves` on the viewer's turn.
+ */
+fun PlayerView.toGameState(board: Board): GameState = GameState(
+    config = config,
+    players = players,
+    board = board,
+    chips = chips,
+    hands = players.associate { it.id to if (it.id == viewerId) hand else Hand(emptyList()) },
+    deck = Deck(List(deckSize) { STAND_IN_CARD }),
+    discard = discard,
+    currentPlayerIndex = currentPlayerIndex,
+    completedSequence = completedSequence,
+    winner = winner,
+    turnNumber = turnNumber,
+    lastMove = lastMove,
+    isDraw = isDraw,
+)
+
+private val STAND_IN_CARD = Card(Suit.CLUBS, Rank.TWO)

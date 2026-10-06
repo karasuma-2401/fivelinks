@@ -1,17 +1,12 @@
 package com.karasuma.fivelinks.fivelinks_cmp.online
 
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Board
-import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
-import com.karasuma.fivelinks.fivelinks_cmp.domain.Deck
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
-import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
-import com.karasuma.fivelinks.fivelinks_cmp.domain.Hand
 import com.karasuma.fivelinks.fivelinks_cmp.domain.PlayerId
-import com.karasuma.fivelinks.fivelinks_cmp.domain.Rank
-import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ClientMessage
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.PlayerView
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ServerMessage
+import com.karasuma.fivelinks.fivelinks_cmp.protocol.toGameState
 import kotlinx.coroutines.channels.Channel
 
 /** A player as [GameServer] sees one, without a real socket; keeps every message it is sent. */
@@ -64,7 +59,7 @@ internal class FakeClient(private val server: GameServer) {
     /** Some legal move for this player's turn, worked out only from what they can see. */
     fun legalMove(): ClientMessage.SubmitMove {
         drain()
-        val move = GameEngine.legalMoves(view.asGameState(board), playerId).first()
+        val move = GameEngine.legalMoves(view.toGameState(board), playerId).first()
         return ClientMessage.SubmitMove(nextId(), move, view.turnNumber)
     }
 }
@@ -72,23 +67,3 @@ internal class FakeClient(private val server: GameServer) {
 internal inline fun <reified T : ServerMessage> List<ServerMessage>.only(): T = filterIsInstance<T>().single()
 
 internal inline fun <reified T : ServerMessage> List<ServerMessage>.lastOf(): T = filterIsInstance<T>().last()
-
-/**
- * What a client can rebuild from its [PlayerView]: enough for [GameEngine.legalMoves] on its
- * own turn. Opponents' hands are left empty and the deck holds stand-in cards of the right count.
- */
-internal fun PlayerView.asGameState(board: Board): GameState = GameState(
-    config = config,
-    players = players,
-    board = board,
-    chips = chips,
-    hands = players.associate { it.id to if (it.id == viewerId) hand else Hand(emptyList()) },
-    deck = Deck(List(deckSize) { Card(Suit.CLUBS, Rank.TWO) }),
-    discard = discard,
-    currentPlayerIndex = currentPlayerIndex,
-    completedSequence = completedSequence,
-    winner = winner,
-    turnNumber = turnNumber,
-    lastMove = lastMove,
-    isDraw = isDraw,
-)

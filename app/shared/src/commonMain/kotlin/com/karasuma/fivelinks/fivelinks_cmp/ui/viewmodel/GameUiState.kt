@@ -21,4 +21,7 @@ data class GameUiState(
     val isPassingTurn: Boolean = false,
     val errorMessage: String? = null,
     val isGameOver: Boolean = false
-)
+) {
+    val selection: CardSelection
+        get() = CardSelection(selectedCardIndices, activeTacticalAction, validPlacementPositions, validSnipePositions)
+}

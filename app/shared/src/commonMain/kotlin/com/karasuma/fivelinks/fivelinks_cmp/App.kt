@@ -71,7 +71,7 @@ fun App(onNightThemeChange: (Boolean) -> Unit = {}) {
                             GameViewModel()
                         }
                         GameScreen(
-                            viewModel = vm,
+                            controller = vm,
                             onExitToMenu = {
                                 currentScreen = AppScreen.MENU
                             }

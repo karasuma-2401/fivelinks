@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Everything stays encrypted, except the game server on this device's own localhost:
+    while developing, `adb reverse tcp:8080 tcp:8080` forwards it to the laptop over USB.
+    That traffic never leaves the phone.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

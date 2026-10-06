@@ -17,6 +17,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.protocol.RoomCloseReason
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.RoomSettings
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.RoomStatus
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ServerMessage
+import com.karasuma.fivelinks.fivelinks_cmp.protocol.toGameState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -236,7 +237,7 @@ class GameServerTest {
             if (host.view.isGameOver) continue
             val mover = players.single { it.playerId == host.view.currentPlayer.id }
             val view = mover.view
-            val move = ai.chooseMove(view.asGameState(mover.board), mover.playerId, Difficulty.HARD)
+            val move = ai.chooseMove(view.toGameState(mover.board), mover.playerId, Difficulty.HARD)
             mover.send(ClientMessage.SubmitMove(mover.nextId(), move, view.turnNumber))
             players.forEach { it.drain() }
         }
