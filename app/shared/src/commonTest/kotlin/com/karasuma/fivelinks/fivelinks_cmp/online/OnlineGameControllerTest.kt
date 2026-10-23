@@ -2,8 +2,11 @@ package com.karasuma.fivelinks.fivelinks_cmp.online
 
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Move
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.domain.isJack
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ClientMessage
+import com.karasuma.fivelinks.fivelinks_cmp.protocol.GameEndReason
+import com.karasuma.fivelinks.fivelinks_cmp.protocol.GameResult
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ServerMessage
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.viewFor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -12,6 +15,8 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class) // the test scheduler's time source
@@ -65,6 +70,19 @@ class OnlineGameControllerTest {
     }
 
     @Test
+    fun onlineUiState_marksTheViewerAndExposesTheServerTurnDeadline() = runTest {
+        val dealt = dealOnlineGame(first = YOU)
+        val (_, controller) = controllerFor(dealt)
+
+        val state = controller.uiState.value
+        assertEquals(ME, state.localPlayerId)
+        assertNotNull(state.turnEndsAt)
+        assertFalse(state.canRestart)
+        // GameScreen uses localPlayerId to keep this hand visible during the opponent's turn.
+        assertEquals(dealt.hands.getValue(ME), state.gameState.handOf(ME))
+    }
+
+    @Test
     fun withoutALink_cardsCannotBePicked() = runTest {
         val (_, controller) = controllerFor(dealOnlineGame())
         connection.state.value = ConnectionState.Reconnecting(attempt = 1, retryInMs = 1_000)
@@ -84,5 +102,18 @@ class OnlineGameControllerTest {
         runCurrent()
 
         assertTrue(connection.sent.single() is ClientMessage.RequestRematch)
+    }
+
+    @Test
+    fun gameOverResult_isExposedForForfeitOverlay() = runTest {
+        val (_, controller) = controllerFor(dealOnlineGame())
+        val result = GameResult(Team.BLUE, GameEndReason.FORFEIT_DISCONNECTED)
+
+        connection.incoming.tryEmit(ServerMessage.GameOver("over", result))
+        runCurrent()
+
+        assertTrue(controller.uiState.value.isGameOver)
+        assertEquals(result, controller.uiState.value.gameResult)
+        assertTrue(controller.uiState.value.canRestart)
     }
 }

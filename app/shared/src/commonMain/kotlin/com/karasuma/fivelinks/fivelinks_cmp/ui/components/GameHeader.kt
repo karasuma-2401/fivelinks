@@ -48,6 +48,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
+import com.karasuma.fivelinks.fivelinks_cmp.domain.PlayerId
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.primaryColor
 
@@ -56,14 +57,18 @@ fun GameHeader(
     gameState: GameState,
     isAiThinking: Boolean,
     elapsedSeconds: Int,
-    onRestartClick: () -> Unit,
+    onRestartClick: (() -> Unit)?,
     onRulesClick: () -> Unit = {},
     onMenuClick: () -> Unit,
+    viewerId: PlayerId? = null,
+    turnSecondsRemaining: Int? = null,
     modifier: Modifier = Modifier
 ) {
     val currentPlayer = gameState.currentPlayer
     val humanCount = gameState.players.count { !it.isAi }
     val title = when {
+        viewerId != null && currentPlayer.id == viewerId -> "LƯỢT CỦA BẠN"
+        viewerId != null -> "LƯỢT CỦA ${currentPlayer.name.uppercase()}"
         currentPlayer.isAi -> if (isAiThinking) "AI ĐANG NGHĨ" else "LƯỢT CỦA AI"
         humanCount == 1 -> "LƯỢT CỦA BẠN"
         else -> "LƯỢT ĐỘI ${currentPlayer.team.label()}"
@@ -73,6 +78,8 @@ fun GameHeader(
     fun teamLabel(team: Team): String {
         val members = gameState.players.filter { it.team == team }
         return when {
+            viewerId != null && members.any { it.id == viewerId } -> "BẠN"
+            viewerId != null -> members.joinToString(" & ") { it.name }.uppercase()
             members.any { it.isAi } -> "AI"
             humanCount == 1 -> "BẠN"
             else -> team.label()
@@ -110,8 +117,10 @@ fun GameHeader(
             }
             HeaderIconButton(LineIcon.Help, "Luật chơi", onRulesClick)
             Spacer(modifier = Modifier.width(8.dp))
-            HeaderIconButton(LineIcon.Restart, "Chơi lại", onRestartClick)
-            Spacer(modifier = Modifier.width(8.dp))
+            if (onRestartClick != null) {
+                HeaderIconButton(LineIcon.Restart, "Chơi lại", onRestartClick)
+                Spacer(modifier = Modifier.width(8.dp))
+            }
             HeaderIconButton(LineIcon.Menu, "Về menu", onMenuClick)
         }
 
@@ -135,7 +144,10 @@ fun GameHeader(
             }
             Stat(value = "${gameState.deck.size}", label = "BỘ BÀI")
             Stat(value = "${gameState.turnNumber + 1}", label = "LƯỢT")
-            Stat(value = formatElapsed(elapsedSeconds), label = "THỜI GIAN")
+            Stat(
+                value = turnSecondsRemaining?.let(::formatElapsed) ?: formatElapsed(elapsedSeconds),
+                label = if (turnSecondsRemaining != null) "CÒN LẠI" else "THỜI GIAN"
+            )
         }
     }
 }

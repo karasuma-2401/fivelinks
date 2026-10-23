@@ -105,6 +105,15 @@ class OnlineGameController(
             isPassingTurn = game.awaitingMove,
             errorMessage = error,
             isGameOver = game.view.isGameOver || result != null,
+            localPlayerId = game.view.viewerId,
+            gameResult = result,
+            turnEndsAt = game.turnEndsAt,
+            canRestart = result != null,
+            isRematchPending = room?.players
+                ?.firstOrNull { it.playerId == game.view.viewerId }
+                ?.wantsRematch == true,
+            opponentDisconnected = opponentAway,
+            opponentForfeitAt = opponentForfeitAt,
         )
     }
 }

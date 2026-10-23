@@ -48,8 +48,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
+import com.karasuma.fivelinks.fivelinks_cmp.domain.PlayerId
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Rank
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
+import com.karasuma.fivelinks.fivelinks_cmp.protocol.GameResult
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
@@ -68,12 +70,18 @@ fun GameOverOverlay(
     elapsedSeconds: Int,
     onRematchClick: () -> Unit,
     onMenuClick: () -> Unit,
+    result: GameResult? = null,
+    localPlayerId: PlayerId? = null,
+    isRematchPending: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val winner = gameState.winner
+    val winner = result?.winner ?: gameState.winner
     val humans = gameState.players.filter { !it.isAi }
     val winners = gameState.players.filter { it.team == winner }
-    val playerLost = humans.size == 1 && winner != null && humans.none { it.team == winner }
+    val playerLost = when {
+        localPlayerId != null -> winner != null && gameState.players.none { it.id == localPlayerId && it.team == winner }
+        else -> humans.size == 1 && winner != null && humans.none { it.team == winner }
+    }
     val headline = when {
         winner == null -> "HÒA TRẬN"
         playerLost -> "THẤT BẠI"
@@ -182,6 +190,7 @@ fun GameOverOverlay(
 
             Button(
                 onClick = onRematchClick,
+                enabled = !isRematchPending,
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = BrandRed, contentColor = PureWhite),
                 elevation = null,
@@ -191,7 +200,7 @@ fun GameOverOverlay(
                     .shadow(14.dp, CircleShape, ambientColor = BrandRed, spotColor = BrandRed)
             ) {
                 Text(
-                    text = "CHƠI LẠI",
+                    text = if (isRematchPending) "ĐANG CHỜ ĐỐI THỦ" else "CHƠI LẠI",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp

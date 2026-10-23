@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -24,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
@@ -101,16 +104,28 @@ fun GameScreen(
 
     val gameState = uiState.gameState
     val currentPlayer = gameState.currentPlayer
+    val localPlayer = uiState.localPlayerId?.let { localId ->
+        gameState.players.firstOrNull { it.id == localId }
+    }
     // Against the AI, keep the human's own hand on screen during the AI turn.
-    val handOwner = if (currentPlayer.isAi) {
+    val handOwner = localPlayer ?: if (currentPlayer.isAi) {
         gameState.players.firstOrNull { !it.isAi } ?: currentPlayer
     } else {
         currentPlayer
     }
-    val isPlayerTurn = !currentPlayer.isAi && !uiState.isAiThinking && !uiState.isPassingTurn && !uiState.isGameOver
+    val isLocalTurn = localPlayer?.id == currentPlayer.id || (localPlayer == null && !currentPlayer.isAi)
+    val isPlayerTurn = isLocalTurn && !uiState.isAiThinking && !uiState.isPassingTurn && !uiState.isGameOver
+
+    // The local match clock also drives a recomposition every second for the server's turn clock.
+    val serverTurnSeconds = uiState.turnEndsAt?.let { deadline ->
+        (deadline - TimeSource.Monotonic.markNow()).inWholeSeconds.coerceAtLeast(0).toInt()
+    }
+    val opponentForfeitSeconds = uiState.opponentForfeitAt?.let { deadline ->
+        (deadline - TimeSource.Monotonic.markNow()).inWholeSeconds.coerceAtLeast(0).toInt()
+    }
 
     // Only ask for confirmation when there is progress to lose.
-    val gameInProgress = gameState.turnNumber > 0 && !uiState.isGameOver
+    val gameInProgress = (gameState.turnNumber > 0 || localPlayer != null) && !uiState.isGameOver
     val requestRestart: () -> Unit = {
         if (gameInProgress) pendingConfirm = PendingConfirm.Restart else restartGame()
     }
@@ -134,9 +149,11 @@ fun GameScreen(
                 gameState = gameState,
                 isAiThinking = uiState.isAiThinking,
                 elapsedSeconds = elapsedSeconds,
-                onRestartClick = requestRestart,
+                onRestartClick = requestRestart.takeIf { uiState.canRestart },
                 onRulesClick = { showRules = true },
-                onMenuClick = requestExit
+                onMenuClick = requestExit,
+                viewerId = localPlayer?.id,
+                turnSecondsRemaining = serverTurnSeconds,
             )
 
             Box(
@@ -156,6 +173,24 @@ fun GameScreen(
                     notice = notice,
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
+                if (uiState.opponentDisconnected) {
+                    val opponentName = gameState.players.firstOrNull { it.id != localPlayer?.id }?.name ?: "Đối thủ"
+                    Text(
+                        text = if (opponentForfeitSeconds != null) {
+                            "$opponentName mất kết nối · xử thua sau ${opponentForfeitSeconds}s"
+                        } else {
+                            "$opponentName đang mất kết nối"
+                        },
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 52.dp)
+                            .background(BrandRed.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        fontSize = 12.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = BrandRed,
+                    )
+                }
             }
 
             TacticalCraftingBar(
@@ -183,7 +218,10 @@ fun GameScreen(
                 gameState = gameState,
                 elapsedSeconds = elapsedSeconds,
                 onRematchClick = restartGame,
-                onMenuClick = onExitToMenu
+                onMenuClick = onExitToMenu,
+                result = uiState.gameResult,
+                localPlayerId = localPlayer?.id,
+                isRematchPending = uiState.isRematchPending,
             )
         }
 
@@ -205,7 +243,11 @@ fun GameScreen(
             )
             PendingConfirm.ExitToMenu -> MessageBox(
                 title = "Về menu chính?",
-                message = "Ván đang chơi sẽ không được lưu lại.",
+                message = if (localPlayer != null) {
+                    "Bạn sẽ rời phòng và đối thủ sẽ thắng trận này."
+                } else {
+                    "Ván đang chơi sẽ không được lưu lại."
+                },
                 confirmText = "Về menu",
                 dismissText = "Ở lại",
                 onConfirm = {

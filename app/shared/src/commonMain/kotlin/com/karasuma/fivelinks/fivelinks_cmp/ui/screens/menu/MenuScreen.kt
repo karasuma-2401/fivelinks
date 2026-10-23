@@ -79,7 +79,8 @@ import org.jetbrains.compose.resources.painterResource
 
 enum class OpponentType {
     AI,
-    LOCAL_PASS_AND_PLAY
+    LOCAL_PASS_AND_PLAY,
+    ONLINE,
 }
 
 /** Lobby choices, hoisted so they survive a round trip to the game screen. */
@@ -93,6 +94,7 @@ data class MenuSettings(
 @Composable
 fun MenuScreen(
     onStartGame: (GameConfig, List<Player>, Difficulty) -> Unit,
+    onStartOnline: () -> Unit = {},
     modifier: Modifier = Modifier,
     settings: MenuSettings = MenuSettings(),
     onSettingsChange: (MenuSettings) -> Unit = {},
@@ -138,15 +140,9 @@ fun MenuScreen(
             SettingsPanel {
                 SectionLabel("ĐỐI THỦ")
                 SegmentedSelector(
-                    options = listOf("Đấu với AI", "Chơi 2 người"),
-                    selectedIndex = if (settings.opponentType == OpponentType.AI) 0 else 1,
-                    onSelect = { index ->
-                        onSettingsChange(
-                            settings.copy(
-                                opponentType = if (index == 0) OpponentType.AI else OpponentType.LOCAL_PASS_AND_PLAY
-                            )
-                        )
-                    }
+                    options = listOf("Đấu với AI", "2 người", "Online"),
+                    selectedIndex = OpponentType.entries.indexOf(settings.opponentType),
+                    onSelect = { index -> onSettingsChange(settings.copy(opponentType = OpponentType.entries[index])) }
                 )
 
                 AnimatedVisibility(
@@ -165,23 +161,34 @@ fun MenuScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-                SectionLabel("MỤC TIÊU CHIẾN THẮNG")
-                SegmentedSelector(
-                    options = listOf("1 hàng · Nhanh", "2 hàng · Chuẩn"),
-                    selectedIndex = settings.sequenceToWin - 1,
-                    onSelect = { index -> onSettingsChange(settings.copy(sequenceToWin = index + 1)) }
-                )
+                if (settings.opponentType != OpponentType.ONLINE) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    SectionLabel("MỤC TIÊU CHIẾN THẮNG")
+                    SegmentedSelector(
+                        options = listOf("1 hàng · Nhanh", "2 hàng · Chuẩn"),
+                        selectedIndex = settings.sequenceToWin - 1,
+                        onSelect = { index -> onSettingsChange(settings.copy(sequenceToWin = index + 1)) }
+                    )
 
-                Spacer(modifier = Modifier.height(10.dp))
-                PanelDivider()
-                SettingToggle(
-                    icon = LineIcon.Bolt,
-                    title = "Chế độ chiến thuật",
-                    subtitle = "Ghép đôi, đồng chất liền kề và Thiên Phạt",
-                    checked = settings.enableTactical,
-                    onCheckedChange = { onSettingsChange(settings.copy(enableTactical = it)) }
-                )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    PanelDivider()
+                    SettingToggle(
+                        icon = LineIcon.Bolt,
+                        title = "Chế độ chiến thuật",
+                        subtitle = "Ghép đôi, đồng chất liền kề và Thiên Phạt",
+                        checked = settings.enableTactical,
+                        onCheckedChange = { onSettingsChange(settings.copy(enableTactical = it)) }
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "Bạn sẽ chọn luật và tạo hoặc vào phòng ở sảnh online.",
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+                    )
+                }
                 PanelDivider()
                 SettingToggle(
                     icon = LineIcon.Moon,
@@ -195,7 +202,10 @@ fun MenuScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                onClick = { startGame(settings, onStartGame) },
+                onClick = {
+                    if (settings.opponentType == OpponentType.ONLINE) onStartOnline()
+                    else startGame(settings, onStartGame)
+                },
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = BrandRed, contentColor = PureWhite),
                 elevation = null,
@@ -205,7 +215,7 @@ fun MenuScreen(
                     .shadow(16.dp, CircleShape, ambientColor = BrandRed, spotColor = BrandRed)
             ) {
                 Text(
-                    text = "BẮT ĐẦU TRẬN ĐẤU",
+                    text = if (settings.opponentType == OpponentType.ONLINE) "VÀO SẢNH ONLINE" else "BẮT ĐẦU TRẬN ĐẤU",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.5.sp

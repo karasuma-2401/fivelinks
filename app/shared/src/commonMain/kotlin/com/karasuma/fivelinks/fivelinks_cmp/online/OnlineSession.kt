@@ -131,6 +131,18 @@ class OnlineSession(
         send { ClientMessage.LeaveRoom(it) }
     }
 
+    /**
+     * Deliberately leaves the current room before closing the socket. This lets the server
+     * resolve an in-progress game immediately instead of making the opponent wait through the
+     * reconnect grace period.
+     */
+    suspend fun leaveRoomAndClose() {
+        if (_state.value.room != null) {
+            connection.send { ClientMessage.LeaveRoom(it) }
+        }
+        close()
+    }
+
     fun requestRematch() {
         send { ClientMessage.RequestRematch(it) }
     }
