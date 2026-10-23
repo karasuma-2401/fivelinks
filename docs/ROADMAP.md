@@ -1,7 +1,7 @@
 # Five Links — Roadmap hoàn thiện sản phẩm
 
 > Cập nhật: 23/10/2026  
-> Trạng thái: P0 đã triển khai trong source, đang chờ build/test trên thiết bị; các phase P1–P6 chưa bắt đầu.
+> Trạng thái: P0 đã triển khai trong source, đang chờ build/test trên thiết bị; P1 đã triển khai trong source, đang chờ cấu hình endpoint thật và kiểm thử trên thiết bị; P2–P6 chưa bắt đầu.
 
 ## 1. Mục tiêu phát hành
 
@@ -23,8 +23,9 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
 | AI trong UI offline | Cần tích hợp | `GameViewModel` hiện gọi `HeuristicEvaluator` trực tiếp, chưa dùng `AiFacadeService` (MCTS/ONNX). |
 | Online server | Có lõi 1v1 | Room, đồng hồ lượt, reconnect, rematch, che bài đối thủ và WebSocket đã triển khai. |
 | Online client | Có hạ tầng | `OnlineClient`, `OnlineSession`, `OnlineGameController` và test có sẵn. |
-| Online trong app | Chưa hoàn tất | `App`/`MenuScreen` chưa có lobby hoặc luồng chuyển sang `OnlineGameController`. |
-| Production vận hành | Chưa có | URL còn cố định localhost; thiếu cấu hình môi trường, giới hạn tải, quan sát hệ thống và pipeline CI/release. |
+| Online trong app | P0 đã triển khai | Menu → lobby → game, tạo/vào phòng, reconnect/rematch/rời phòng và `OnlineGameController` đã được nối vào app. |
+| Cấu hình client online | P1 đã triển khai trong source | Android/iOS/Desktop/Web/Wasm có URL theo môi trường, token resume và lifecycle socket; staging/production thật còn thiếu. |
+| Production vận hành | Chưa có | Cần endpoint thật, giới hạn tải, quan sát hệ thống và pipeline CI/release. |
 
 ### Nợ kỹ thuật đáng chú ý
 
@@ -47,7 +48,7 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
 
 **Còn để xác nhận:** build/test hai client thật, reconnect trong thời gian cho phép và kiểm tra không còn session/job treo sau khi về menu.
 
-### P1 — Cấu hình môi trường và vòng đời kết nối
+### P1 — Cấu hình môi trường và vòng đời kết nối 🚧
 
 **Mục tiêu:** online không phụ thuộc `localhost` và chịu được vòng đời thực của mobile/web.
 
@@ -57,7 +58,9 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
 4. Quản lý start/stop socket theo app lifecycle và hiển thị trạng thái khôi phục rõ ràng.
 5. Viết tài liệu local/staging/prod cho client và server.
 
-**Definition of Done:** một release candidate kết nối staging mà không cần sửa source; đóng/mở lại app vẫn có thể vào lại phòng hợp lệ.
+**Đã triển khai:** Android debug/release URL theo Gradle property, Desktop URL theo JVM/env, iOS URL theo Xcode config, Web/Wasm URL theo thẻ meta trong `index.html`, profile store Android/iOS/Desktop/Web, lưu/khôi phục opaque session token và pause/resume socket theo lifecycle.
+
+**Còn để hoàn thành ngoài source:** provisioning staging/production thật, secret/secure-cookie cho hệ thống tài khoản sau này và kiểm thử lifecycle trên thiết bị Android/iOS/Web.
 
 ### P2 — Đồng nhất và hoàn thiện AI
 

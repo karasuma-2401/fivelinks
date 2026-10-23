@@ -7,6 +7,14 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+val debugOnlineServerUrl = providers.gradleProperty("onlineDebugServerUrl")
+    .orElse("ws://localhost:8080/ws")
+val releaseOnlineServerUrl = providers.gradleProperty("onlineReleaseServerUrl")
+    .orElse("")
+
+fun buildConfigString(value: String): String =
+    "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_11
@@ -62,12 +70,21 @@ android {
         }
     }
     buildTypes {
+        getByName("debug") {
+            // adb reverse lets a USB-connected phone reach this address on the development laptop.
+            buildConfigField("String", "ONLINE_SERVER_URL", buildConfigString(debugOnlineServerUrl.get()))
+        }
         getByName("release") {
+            // Deliberately blank unless CI supplies -PonlineReleaseServerUrl=wss://…/ws.
+            buildConfigField("String", "ONLINE_SERVER_URL", buildConfigString(releaseOnlineServerUrl.get()))
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release")
         }
+    }
+    buildFeatures {
+        buildConfig = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

@@ -4,5 +4,13 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>FiveLinksServerURL</key>
+	<string>$(ONLINE_SERVER_URL)</string>
+	<!-- Development only: localhost is reached through the simulator/host. Release requires wss://. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

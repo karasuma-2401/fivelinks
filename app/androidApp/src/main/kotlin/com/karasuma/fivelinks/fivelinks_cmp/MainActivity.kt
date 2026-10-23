@@ -8,14 +8,23 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.karasuma.fivelinks.fivelinks_cmp.online.AndroidOnlineProfileStore
 
 class MainActivity : ComponentActivity() {
+    private lateinit var onlineProfileStore: AndroidOnlineProfileStore
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        onlineProfileStore = AndroidOnlineProfileStore(applicationContext)
 
         setContent {
-            App(onNightThemeChange = ::applySystemBarStyle)
+            App(
+                onNightThemeChange = ::applySystemBarStyle,
+                onlineServerUrl = BuildConfig.ONLINE_SERVER_URL,
+                requireSecureOnline = !BuildConfig.DEBUG,
+                onlineProfileStore = onlineProfileStore,
+            )
         }
     }
 

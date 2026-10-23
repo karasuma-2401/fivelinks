@@ -5,6 +5,8 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.karasuma.fivelinks.fivelinks_cmp.App
+import com.karasuma.fivelinks.fivelinks_cmp.online.JvmOnlineProfileStore
+import com.karasuma.fivelinks.fivelinks_cmp.online.ServerConfig
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.fiveLinkAppIcon
 
 fun main() = application {
@@ -14,6 +16,14 @@ fun main() = application {
         icon = fiveLinkAppIcon(),
         state = rememberWindowState(width = 1200.dp, height = 800.dp)
     ) {
-        App()
+        App(
+            onlineServerUrl = configuredServerUrl(),
+            onlineProfileStore = JvmOnlineProfileStore(),
+        )
     }
 }
+
+private fun configuredServerUrl(): String =
+    System.getProperty("fivelinks.serverUrl")
+        ?: System.getenv("FIVELINKS_SERVER_URL")
+        ?: ServerConfig.DEV_URL

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +16,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.karasuma.fivelinks.fivelinks_cmp.online.InMemoryOnlineProfileStore
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.game.GameScreen
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.MenuScreen
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.MenuSettings
@@ -24,7 +29,10 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameController
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameViewModel
 import com.karasuma.fivelinks.fivelinks_cmp.online.OnlineClient
 import com.karasuma.fivelinks.fivelinks_cmp.online.OnlineGameController
+import com.karasuma.fivelinks.fivelinks_cmp.online.OnlineProfile
+import com.karasuma.fivelinks.fivelinks_cmp.online.OnlineProfileStore
 import com.karasuma.fivelinks.fivelinks_cmp.online.OnlineSession
+import com.karasuma.fivelinks.fivelinks_cmp.online.ServerConfig
 import kotlinx.coroutines.launch
 
 enum class AppScreen {
@@ -38,7 +46,12 @@ enum class AppScreen {
  * theme (Android's status bar would otherwise follow the system theme).
  */
 @Composable
-fun App(onNightThemeChange: (Boolean) -> Unit = {}) {
+fun App(
+    onNightThemeChange: (Boolean) -> Unit = {},
+    onlineServerUrl: String = ServerConfig.DEV_URL,
+    requireSecureOnline: Boolean = false,
+    onlineProfileStore: OnlineProfileStore = InMemoryOnlineProfileStore,
+) {
     val systemDark = isSystemInDarkTheme()
     var isNightTheme by rememberSaveable { mutableStateOf(systemDark) }
     LaunchedEffect(isNightTheme) { onNightThemeChange(isNightTheme) }
@@ -47,8 +60,27 @@ fun App(onNightThemeChange: (Boolean) -> Unit = {}) {
         var currentScreen by remember { mutableStateOf(AppScreen.MENU) }
         var activeController by remember { mutableStateOf<GameController?>(null) }
         var onlineSession by remember { mutableStateOf<OnlineSession?>(null) }
+        var onlineProfile by remember { mutableStateOf(onlineProfileStore.load()) }
         var menuSettings by remember { mutableStateOf(MenuSettings()) }
         val scope = rememberCoroutineScope()
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        val serverConfigurationError = remember(onlineServerUrl, requireSecureOnline) {
+            ServerConfig.validationError(onlineServerUrl, requireSecureOnline)
+        }
+
+        // Keep a room resumable while the app is backgrounded. A process restart creates a new
+        // client later with the persisted opaque token, so the server can restore the same room.
+        DisposableEffect(lifecycle, onlineSession) {
+            val observer = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_STOP -> onlineSession?.pause()
+                    Lifecycle.Event.ON_START -> onlineSession?.resume()
+                    else -> Unit
+                }
+            }
+            lifecycle.addObserver(observer)
+            onDispose { lifecycle.removeObserver(observer) }
+        }
 
         fun exitOnline() {
             val leavingSession = onlineSession
@@ -87,9 +119,27 @@ fun App(onNightThemeChange: (Boolean) -> Unit = {}) {
 
                     AppScreen.ONLINE_LOBBY -> OnlineLobbyScreen(
                         session = onlineSession,
+                        initialPlayerName = onlineProfile.playerName,
+                        serverConfigurationError = serverConfigurationError,
                         onConnect = { playerName ->
                             onlineSession?.close()
-                            onlineSession = OnlineSession(OnlineClient(playerName, scope), scope).also { it.start() }
+                            val resumeToken = onlineProfile.takeIf { it.playerName == playerName }?.sessionToken
+                            val profile = OnlineProfile(playerName = playerName, sessionToken = resumeToken)
+                            onlineProfile = profile
+                            onlineProfileStore.save(profile)
+                            onlineSession = OnlineSession(
+                                OnlineClient(
+                                    playerName = playerName,
+                                    scope = scope,
+                                    url = onlineServerUrl.trim(),
+                                    initialSessionToken = resumeToken,
+                                    onSessionTokenChanged = { token ->
+                                        onlineProfile = onlineProfile.copy(sessionToken = token)
+                                        onlineProfileStore.save(onlineProfile)
+                                    },
+                                ),
+                                scope,
+                            ).also { it.start() }
                         },
                         onEnterGame = {
                             onlineSession?.let { session ->

@@ -66,6 +66,18 @@ class OnlineSessionTest {
     }
 
     @Test
+    fun pausingAndResuming_keepsFollowersButReopensTheSocket() = runTest {
+        val session = startedSession()
+
+        session.pause()
+        assertFalse(connection.started)
+        assertEquals(ConnectionState.Offline, session.state.value.connection)
+
+        session.resume()
+        assertTrue(connection.started)
+    }
+
+    @Test
     fun creatingARoom_waitsForTheServer() = runTest {
         val session = startedSession()
         val settings = RoomSettings(sequenceToWin = 1, firstPlayer = FirstPlayer.GUEST)

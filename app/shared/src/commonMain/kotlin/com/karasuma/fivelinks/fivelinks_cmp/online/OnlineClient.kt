@@ -36,6 +36,20 @@ import kotlin.time.TimeSource
  */
 object ServerConfig {
     const val DEV_URL = "ws://localhost:8080/ws"
+
+    /** Returns a Vietnamese setup error instead of letting a bad release configuration retry forever. */
+    fun validationError(url: String, requireSecure: Boolean = false): String? {
+        val normalized = url.trim()
+        return when {
+            normalized.isEmpty() -> "Bản này chưa được cấu hình máy chủ online."
+            requireSecure && !normalized.startsWith("wss://") ->
+                "Bản phát hành chỉ chấp nhận máy chủ bảo mật wss://."
+            !normalized.startsWith("ws://") && !normalized.startsWith("wss://") ->
+                "Địa chỉ máy chủ phải bắt đầu bằng ws:// hoặc wss://."
+            !normalized.endsWith("/ws") -> "Địa chỉ máy chủ phải kết thúc bằng /ws."
+            else -> null
+        }
+    }
 }
 
 /** The link to the game server, as the screens see it. */
@@ -81,6 +95,8 @@ class OnlineClient(
     private val scope: CoroutineScope,
     private val url: String = ServerConfig.DEV_URL,
     private val httpClient: HttpClient = createGameHttpClient(),
+    initialSessionToken: String? = null,
+    private val onSessionTokenChanged: (String?) -> Unit = {},
 ) : ServerConnection {
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Offline)
     override val state: StateFlow<ConnectionState> = _state.asStateFlow()
@@ -89,7 +105,7 @@ class OnlineClient(
     override val messages: Flow<ServerMessage> = _messages.asSharedFlow()
 
     /** Lets the server resume this player's session, and their room, after a drop. */
-    var sessionToken: String? = null
+    var sessionToken: String? = initialSessionToken
         private set
 
     private var socket: DefaultClientWebSocketSession? = null
@@ -165,7 +181,7 @@ class OnlineClient(
                     val message = (frame as? Frame.Text)?.let { decode(it.readText()) } ?: continue
                     when (message) {
                         is ServerMessage.Welcome -> {
-                            sessionToken = message.sessionToken
+                            updateSessionToken(message.sessionToken)
                             failures = 0
                             _state.value = ConnectionState.Connected(message.playerId)
                         }
@@ -173,7 +189,7 @@ class OnlineClient(
                             // The server no longer knows this session (it restarted, or we were
                             // away too long): start a fresh one.
                             ErrorCodes.SESSION_EXPIRED -> {
-                                sessionToken = null
+                                updateSessionToken(null)
                                 sendMessage(ClientMessage.Hello(nextMessageId(), playerName = playerName))
                             }
                             ErrorCodes.PROTOCOL_VERSION_MISMATCH -> updateRequired = true
@@ -210,6 +226,12 @@ class OnlineClient(
         runCatching { ProtocolJson.decodeFromString(ServerMessage.serializer(), text) }.getOrNull()
 
     private fun nextMessageId(): String = "c${++lastMessageId}"
+
+    private fun updateSessionToken(value: String?) {
+        if (sessionToken == value) return
+        sessionToken = value
+        onSessionTokenChanged(value)
+    }
 
     private companion object {
         val PING_EVERY = 10.seconds

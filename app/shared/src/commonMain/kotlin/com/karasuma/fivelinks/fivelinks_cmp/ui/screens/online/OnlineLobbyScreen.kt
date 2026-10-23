@@ -69,13 +69,15 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
 @Composable
 fun OnlineLobbyScreen(
     session: OnlineSession?,
+    initialPlayerName: String,
+    serverConfigurationError: String?,
     onConnect: (String) -> Unit,
     onEnterGame: () -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     PlatformBackHandler(onBack = onExit)
-    var playerName by rememberSaveable { mutableStateOf("Người chơi") }
+    var playerName by rememberSaveable { mutableStateOf(initialPlayerName) }
 
     Box(
         modifier = modifier
@@ -88,6 +90,7 @@ fun OnlineLobbyScreen(
                 playerName = playerName,
                 onNameChange = { playerName = it },
                 onConnect = { onConnect(playerName.trim()) },
+                serverConfigurationError = serverConfigurationError,
                 onExit = onExit,
             )
         } else {
@@ -112,6 +115,7 @@ private fun ConnectPanel(
     playerName: String,
     onNameChange: (String) -> Unit,
     onConnect: () -> Unit,
+    serverConfigurationError: String?,
     onExit: () -> Unit,
 ) {
     LobbyPage {
@@ -133,10 +137,14 @@ private fun ConnectPanel(
                 lineHeight = 17.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            serverConfigurationError?.let {
+                Spacer(Modifier.height(12.dp))
+                ErrorBanner(it)
+            }
             Spacer(Modifier.height(20.dp))
             PrimaryButton(
                 text = "KẾT NỐI",
-                enabled = playerName.trim().isNotEmpty(),
+                enabled = playerName.trim().isNotEmpty() && serverConfigurationError == null,
                 onClick = onConnect,
             )
         }

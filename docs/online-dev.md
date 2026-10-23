@@ -1,6 +1,6 @@
 # Chạy thử chơi online khi phát triển
 
-> P0 đã hoàn thành luồng online trong app. Server chạy trên laptop, app kết nối tới `ws://localhost:8080/ws` (`ServerConfig.DEV_URL`).
+> P0 đã hoàn thành luồng online trong app. Server chạy trên laptop, app debug kết nối tới `ws://localhost:8080/ws` (`ServerConfig.DEV_URL`).
 
 ## 1. Bật server
 
@@ -21,6 +21,17 @@ Dừng server bằng `Ctrl+C` trong terminal đang chạy nó.
 
 Android chỉ cho phép kết nối không mã hóa tới `localhost` / `127.0.0.1` (file `app/androidApp/src/main/res/xml/network_security_config.xml`). Mọi địa chỉ khác vẫn bắt buộc mã hóa (`wss://`).
 
+### URL theo môi trường
+
+- **Android debug:** mặc định `ws://localhost:8080/ws`, phù hợp với `adb reverse`.
+- **Android debug trên staging:** truyền `-PonlineDebugServerUrl=wss://staging.example.com/ws` khi build.
+- **Android release:** CI phải truyền `-PonlineReleaseServerUrl=wss://play.example.com/ws`. Nếu bỏ trống, nút kết nối bị khóa và báo lỗi cấu hình thay vì thử `localhost` trong bản phát hành.
+- **Desktop:** truyền JVM property `-Dfivelinks.serverUrl=wss://…/ws` hoặc environment `FIVELINKS_SERVER_URL`.
+- **iOS:** `Configuration/Config.xcconfig` đặt `ONLINE_SERVER_URL`; cấu hình Release phải thay bằng `wss://…/ws` trước distribution.
+- **Web/Wasm:** sửa `<meta name="fivelinks-server-url">` trong `app/webApp/src/webMain/resources/index.html` thành `wss://…/ws` trước khi publish. Chỉ trang chạy tại `localhost` mới được phép dùng `ws://`.
+
+`ServerConfig.validationError()` chỉ chấp nhận URL `ws://` hoặc `wss://` kết thúc bằng `/ws`.
+
 ## 3. Các lớp phía app (`app/shared/.../online/`)
 
 | Lớp | Vai trò |
@@ -30,6 +41,7 @@ Android chỉ cho phép kết nối không mã hóa tới `localhost` / `127.0.0
 | `OnlineSession` | Theo dõi tin nhắn server thành `OnlineState`: kết nối, phòng, ván (`PlayerView` + bàn cờ), đồng hồ lượt, đối thủ rớt mạng, kết quả, lỗi (tiếng Việt). Thao tác: `createRoom`, `joinRoom`, `submitMove`, `leaveRoom`, `requestRematch` |
 | `OnlineGameController` | Cho màn chơi hiện có (`GameScreen`) điều khiển ván online: chọn bài trên máy, nước đi gửi lên server |
 | `OnlineLobbyScreen` | Nhập tên, kết nối, tạo phòng/chọn luật, vào phòng bằng mã, chờ đối thủ và báo trạng thái socket |
+| `OnlineProfileStore` | Lưu tên và opaque session token để Android/iOS/Desktop/Web có thể vào lại server sau lifecycle/process restart |
 
 Chế độ offline (`GameViewModel`, đấu AI / 2 người một máy) **không đổi**; cả hai cùng dùng logic chọn bài trong `CardSelection.kt` và cùng triển khai `GameController`.
 
@@ -46,8 +58,14 @@ Chế độ offline (`GameViewModel`, đấu AI / 2 người một máy) **khôn
 - Màn chơi online luôn hiển thị tay bài của người xem, khóa input ngoài lượt, hiển thị đồng hồ lượt/reconnect đối thủ và hỗ trợ rematch.
 - Rời lobby hoặc trận online gửi `LeaveRoom` trước khi đóng socket, để đối thủ không phải chờ hết reconnect grace period.
 
-## 6. Sẽ làm ở các giai đoạn sau
+## 6. P1 đã triển khai
 
-- **P1:** giữ phiên khi app chạy nền / bị Android đóng, đồng thời lưu tên và session token theo nền tảng.
-- **P1:** bản release trỏ tới server staging/production qua `wss://…` thay vì `localhost`.
+- Android debug/release dùng URL riêng theo Gradle property; Desktop nhận URL qua JVM property hoặc environment; Web/Wasm lấy URL từ thẻ meta trong artifact web.
+- Tên và opaque reconnect token được lưu trong app-private Android storage, iOS UserDefaults, Java Preferences trên Desktop hoặc browser local storage. `OnlineClient` xóa token khi server báo `SESSION_EXPIRED`.
+- `App` pause socket khi Android vào nền và resume khi quay lại. Sau process restart, người chơi vào Online sẽ kết nối bằng token đã lưu để server khôi phục room còn hạn.
+
+## 7. Sẽ làm ở các giai đoạn sau
+
+- **P1 ngoài source:** provisioning staging/production thật và kiểm thử reconnect/lifecycle trên thiết bị thật.
+- Khi thêm tài khoản, chuyển credential Android/iOS sang Keystore/Keychain và Web sang secure HttpOnly cookie; opaque guest token hiện không được dùng như credential tài khoản.
 - **P4:** rate limit, giới hạn số phòng, observability và triển khai server production.

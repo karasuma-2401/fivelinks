@@ -104,6 +104,16 @@ class OnlineSession(
         followers = emptyList()
     }
 
+    /** Stops the socket while retaining followers and the reconnect token for a later [resume]. */
+    fun pause() {
+        if (followers.isNotEmpty()) connection.stop()
+    }
+
+    /** Reopens a paused socket and asks the server to restore this player's room, if any. */
+    fun resume() {
+        if (followers.isNotEmpty()) connection.start() else start()
+    }
+
     fun createRoom(settings: RoomSettings) {
         _state.update { it.copy(busy = true, error = null, roomClosed = null) }
         send { ClientMessage.CreateRoom(it, settings) }
