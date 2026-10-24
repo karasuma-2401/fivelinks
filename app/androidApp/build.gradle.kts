@@ -35,12 +35,16 @@ configurations.configureEach {
     exclude(group = "com.microsoft.onnxruntime")
 }
 
-// Release signing comes from keystore.properties at the project root (git-ignored).
+// Release signing comes from keystore.properties at project root or environment variables (CI secret store).
 // Without it, release builds are produced unsigned.
 val keystoreProperties = Properties().apply {
     val file = rootProject.file("keystore.properties")
     if (file.exists()) file.inputStream().use { load(it) }
 }
+val releaseStorePath = keystoreProperties.getProperty("storeFile") ?: System.getenv("KEYSTORE_FILE")
+val releaseStorePassword = keystoreProperties.getProperty("storePassword") ?: System.getenv("KEYSTORE_PASSWORD")
+val releaseKeyAlias = keystoreProperties.getProperty("keyAlias") ?: System.getenv("KEY_ALIAS")
+val releaseKeyPassword = keystoreProperties.getProperty("keyPassword") ?: System.getenv("KEY_PASSWORD")
 
 android {
     namespace = "com.karasuma.fivelinks.fivelinks_cmp"
@@ -54,12 +58,12 @@ android {
         versionName = "1.0.1"
     }
     signingConfigs {
-        if (!keystoreProperties.isEmpty) {
+        if (!releaseStorePath.isNullOrBlank() && rootProject.file(releaseStorePath).exists()) {
             create("release") {
-                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = rootProject.file(releaseStorePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
         }
     }

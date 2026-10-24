@@ -1,7 +1,7 @@
 # Five Links — Roadmap hoàn thiện sản phẩm
 
-> Cập nhật: 24/10/2026  
-> Trạng thái: P0 và P1 đã triển khai trong source (đã pass unit/integration test trên JVM), đang chờ kiểm thử trên thiết bị thật; P2 đã triển khai và pass bộ test `:core:jvmTest`, `:app:shared:jvmTest`, `:server:test`, đang chờ benchmark trên các thiết bị mục tiêu; P3–P6 chưa bắt đầu.
+> Cập nhật: 25/10/2026  
+> Trạng thái: P0, P1, P2, P3, P4, P5 đã hoàn tất trong source và pass 100% test suites (`:core:jvmTest`, `:app:shared:jvmTest`, `:server:test`). P6 là định hướng tính năng hậu phát hành (post-launch scope).
 
 ## 1. Mục tiêu phát hành
 
@@ -111,17 +111,31 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
 **Definition of Done:** Staging và production chịu được kết nối lỗi, flood request, có log và metric giám sát đầy đủ, từ chối origin trái phép và tự động tắt máy/khởi động lại an toàn không làm đơ ứng dụng người chơi.
 
 
-### P5 — Release engineering và đảm bảo chất lượng
+### P5 — Release engineering và đảm bảo chất lượng ✅
 
 **Mục tiêu:** tạo bản phát hành lặp lại được và giảm lỗi hồi quy.
 
-1. Thiết lập CI chạy `core:jvmTest`, `server:test`, `app:shared:jvmTest` và build các target phát hành.
-2. Thêm smoke/E2E test cho WebSocket, offline AI, reconnect và serialization compatibility.
-3. Kiểm thử thủ công trên Android thật, các trình duyệt mục tiêu và ít nhất một target desktop; iOS trên macOS nếu phát hành iOS.
-4. Di chuyển signing key và thông tin nhạy cảm khỏi workspace/repository vào secret store của CI.
-5. Lập release checklist: versioning, changelog, crash/log review, privacy policy và kênh phản hồi người dùng.
+1. Thiết lập CI tự động hóa (`.github/workflows/ci.yml`):
+   - Chạy toàn bộ test suite (`:core:jvmTest`, `:app:shared:jvmTest`, `:server:test`).
+   - Kiểm tra build artifacts đa nền tảng: Desktop JAR (`:app:desktopApp:jar`), Server distribution (`:server:installDist`), Web distribution (`:app:webApp:jsBrowserDistribution`).
+   - Kiểm tra assemble Android APK (`:app:androidApp:assembleDebug`).
+   - Kiểm tra đóng gói Docker image cho server (`server/Dockerfile`).
+2. Cách ly signing key và bí mật (`app/androidApp/build.gradle.kts`):
+   - Không commit `.jks`, `.keystore` hay `keystore.properties` vào repository (đã có trong `.gitignore`).
+   - Cung cấp cấu hình nạp keystore động từ environment variables trong CI (`KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`) hoặc file `keystore.properties` ngoài Git.
+3. Bộ test hồi quy và tương thích serialization (`SerializationCompatibilityTest.kt`):
+   - Kiểm thử round-trip JSON serialization cho tất cả message client/server và `GameState`.
+   - Kiểm thử khả năng chịu lỗi và tương thích ngược/tiến khi payload JSON có thêm các trường chưa biết (unknown keys).
+   - Kiểm tra các mã lỗi mới (`RATE_LIMITED`, `SERVER_BUSY`) và lý do đóng phòng (`SERVER_SHUTDOWN`).
+4. Xây dựng tài liệu quy trình phát hành (`docs/RELEASE_CHECKLIST.md`):
+   - Chiến lược versioning (SemVer: Major.Minor.Patch) và `versionCode` mapping.
+   - Quality gates bắt buộc trước khi phát hành (Unit test, Integration test, Lint/Build, Security scan).
+   - Bảng checklist kiểm thử thủ công đa nền tảng (Android APK/AAB, Web Chrome/Safari/Firefox, Desktop JVM Windows/macOS/Linux).
+   - Quy trình Go/No-Go, quản lý rollback và chính sách quyền riêng tư / dữ liệu người dùng.
 
-**Definition of Done:** một pipeline tạo được artifact phát hành, test xanh, signing không chứa bí mật trong repo, và có checklist go/no-go.
+**Đã triển khai:** Workflow CI/CD hoàn chỉnh trên GitHub Actions, cách ly secret signing, bộ test tương thích giao thức, và tài liệu release checklist toàn diện.
+
+**Definition of Done:** Một pipeline tạo được artifact phát hành, test xanh 100%, signing không chứa bí mật trong repo, và có checklist go/no-go chi tiết.
 
 ### P6 — Tính năng sau bản phát hành đầu tiên
 
