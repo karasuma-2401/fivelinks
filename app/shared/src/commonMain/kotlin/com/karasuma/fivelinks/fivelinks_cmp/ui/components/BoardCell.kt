@@ -2,6 +2,7 @@ package com.karasuma.fivelinks.fivelinks_cmp.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -22,10 +23,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
+import com.karasuma.fivelinks.fivelinks_cmp.domain.vietnameseName
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
 
 @Composable
@@ -45,12 +51,39 @@ fun BoardCell(
     val colors = FiveLinksTheme.colors
     val background = if (isCorner || card == null) colors.cornerCell else card.suit.cardBackground()
 
+    val description = buildString {
+        if (isCorner) {
+            append("Ô góc tự do")
+        } else if (card != null) {
+            append("Ô ${card.rank.vietnameseName()} ${card.suit.vietnameseName()}")
+        } else {
+            append("Ô bàn cờ")
+        }
+        if (chipTeam != null) {
+            append(", có quân của đội ${chipTeam.name}")
+        }
+        if (isValidPlacement) {
+            append(", có thể đặt quân")
+        }
+        if (isValidSnipeTarget) {
+            append(", có thể bắn tỉa quân này")
+        }
+        if (isLastMove) {
+            append(", nước đi vừa rồi")
+        }
+    }
+
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .padding(0.8.dp)
             .clip(RoundedCornerShape(cellSize * 0.12f))
             .background(background)
+            .semantics {
+                this.contentDescription = description
+                this.role = Role.Button
+            }
+            .focusable()
             .clickable(interactionSource = null, indication = null, onClick = onClick)
             .drawWithContent {
                 drawContent()

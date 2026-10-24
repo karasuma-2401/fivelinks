@@ -33,15 +33,21 @@ class GameViewModel(
         Player(id = "p0", name = "Người chơi 1", team = Team.BLUE, isAi = false),
         Player(id = "p1", name = "AI", team = Team.RED, isAi = true)
     ),
-    private val aiDifficulty: Difficulty = Difficulty.MEDIUM,
+    val aiDifficulty: Difficulty = Difficulty.MEDIUM,
     private val aiService: AiService = AiFacadeService(),
     private val heuristicFallback: AiService = HeuristicEvaluator(),
     private val aiDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val aiThinkDelayMillis: Long = AI_THINK_DELAY_MS,
     private val passDelayMillis: Long = PASS_DELAY_MS,
+    restoredState: GameState? = null,
+    private val onStateChanged: ((GameState) -> Unit)? = null,
 ) : ViewModel(), GameController {
     private val _uiState = MutableStateFlow(
-        createInitialState(initialConfig, initialPlayers)
+        if (restoredState != null) {
+            GameUiState(gameState = restoredState, isGameOver = restoredState.isGameOver)
+        } else {
+            createInitialState(initialConfig, initialPlayers)
+        }
     )
     override val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
@@ -67,7 +73,9 @@ class GameViewModel(
         cancelPendingWork()
         gameGeneration++
         // New seed so a rematch deals a different board and hands.
-        _uiState.value = createInitialState(previous.config.copy(seed = Random.nextLong()), previous.players)
+        val newState = createInitialState(previous.config.copy(seed = Random.nextLong()), previous.players)
+        _uiState.value = newState
+        onStateChanged?.invoke(newState.gameState)
         checkAndTriggerAi()
     }
 
@@ -75,6 +83,7 @@ class GameViewModel(
         cancelPendingWork()
         gameGeneration++
         _uiState.update { it.copy(isAiThinking = false, isPassingTurn = false) }
+        onStateChanged?.invoke(_uiState.value.gameState)
     }
 
     override fun onCleared() {
@@ -169,6 +178,7 @@ class GameViewModel(
                     isGameOver = nextState.isGameOver
                 )
             }
+            onStateChanged?.invoke(nextState)
             checkAndTriggerAi()
         } else {
             _uiState.update {
@@ -199,6 +209,7 @@ class GameViewModel(
             _uiState.update {
                 it.copy(gameState = skipped.state, isGameOver = skipped.state.isGameOver, isPassingTurn = false)
             }
+            onStateChanged?.invoke(skipped.state)
             checkAndTriggerAi()
         }
         return true
@@ -245,6 +256,7 @@ class GameViewModel(
                         isGameOver = nextState.isGameOver,
                     )
                 }
+                onStateChanged?.invoke(nextState)
                 // If the following player is also AI, schedule their independent turn.
                 checkAndTriggerAi()
             } else {

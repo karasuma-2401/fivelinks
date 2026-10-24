@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +27,10 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -35,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.domain.isJack
 import com.karasuma.fivelinks.fivelinks_cmp.domain.isTwoEyedJack
+import com.karasuma.fivelinks.fivelinks_cmp.domain.vietnameseName
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
@@ -165,10 +170,22 @@ fun HandCardView(
         else -> 1.dp to PureWhite.copy(alpha = 0.16f)
     }
 
+    val cardDesc = buildString {
+        append("Lá bài ${card.rank.vietnameseName()} ${card.suit.vietnameseName()}")
+        if (isSelected) append(", đang chọn")
+        if (isDead) append(", bài chết có thể đổi")
+        if (!enabled) append(", chưa tới lượt")
+    }
+
     Box(
         modifier = modifier
             .offset(y = lift)
             .shadow(if (isSelected) 14.dp else 5.dp, shape)
+            .semantics {
+                this.contentDescription = cardDesc
+                this.role = Role.Button
+            }
+            .focusable(enabled = enabled)
             .clickable(
                 interactionSource = null,
                 indication = null,

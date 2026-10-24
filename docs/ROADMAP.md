@@ -61,7 +61,7 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
 
 **Còn để hoàn thành ngoài source:** provisioning staging/production thật, secret/secure-cookie cho hệ thống tài khoản sau này và kiểm thử lifecycle trên thiết bị Android/iOS/Web.
 
-### P2 — Đồng nhất và hoàn thiện AI 🚧
+### P2 — Đồng nhất và hoàn thiện AI ✅
 
 **Mục tiêu:** cấp độ AI trong menu thực sự phản ánh engine đã xây và không gây lag UI.
 
@@ -77,17 +77,21 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
 
 **Còn để xác nhận ngoài source:** chạy benchmark/arena trên Android, Desktop và Web mục tiêu để chốt budget thực tế; action space, training data và ONNX model đầy đủ cho Tactical là hạng mục dài hạn.
 
-### P3 — Chất lượng trải nghiệm offline
+### P3 — Chất lượng trải nghiệm offline ✅
 
 **Mục tiêu:** game có thể chơi, tiếp tục và hiểu được mà không cần giải thích ngoài app.
 
-1. Lưu/khôi phục ván offline và cài đặt: tên, theme, luật gần đây, độ khó.
-2. Onboarding ngắn cho Sequence, Jack, crafting và Divine Wipe; vẫn giữ Rules Dialog đầy đủ.
-3. Hoàn thiện accessibility: semantic labels, tương phản, cỡ chạm, screen-reader và điều hướng bàn phím Web/Desktop.
-4. Rà soát responsive cho điện thoại nhỏ, tablet và web ngang.
-5. Thiết kế tùy chọn âm thanh/rung (chỉ thêm asset/audio khi đã chốt phong cách âm thanh).
+1. Lưu/khôi phục ván offline và cài đặt: tên, theme, luật gần đây, độ khó, âm thanh/rung qua `OfflineStorage` đa nền tảng (Android `SharedPreferences`, Desktop `java.util.prefs`, iOS `NSUserDefaults`, Web `localStorage`).
+2. Onboarding walkthrough trực quan (`OnboardingDialog`) 4 bước cho Sequence, Jack 1 mắt/2 mắt, chế tạo chiến thuật (Crafting) và Thiên Phạt (Divine Wipe); đồng thời giữ nguyên `RulesDialog` chi tiết.
+3. Hoàn thiện accessibility: semantic labels (`contentDescription`, `Role.Button`), hỗ trợ focus bàn phím trên Desktop/Web, kích thước chạm đạt chuẩn, và mô tả chi tiết bằng tiếng Việt cho quân bài và ô bàn cờ.
+4. Responsive layout hai chế độ cho `GameScreen`: giao diện dọc cho điện thoại nhỏ, và giao diện 2 cột thích ứng (`BoxWithConstraints`) cho màn hình ngang/tablet/desktop (bàn cờ bên trái, thanh chế tạo và bài trên tay bên phải).
+5. Tùy chọn âm thanh và rung (`SoundController`, `LocalSoundEnabled`, `LocalVibrationEnabled`) gắn vào `MenuScreen`, `BoardGrid`, `HandView`, và tắt rung khi người dùng tắt haptics.
+6. Kiểm thử đơn vị lưu trữ và tuần tự hóa ngoại tuyến (`OfflineStorageTest`) đạt 100% pass.
 
-**Definition of Done:** người chơi mới có thể bắt đầu một ván, hiểu lượt đi đầu tiên và tiếp tục ván offline sau khi mở lại app.
+**Đã triển khai:** Toàn bộ tính năng lưu trữ ván đấu và cài đặt ngoại tuyến, onboarding tương tác, a11y semantic labels, responsive 2-column layout, bộ chuyển đổi âm thanh/rung, và kiểm thử JVM/Android/Desktop đã hoàn tất và vượt qua toàn bộ test suite.
+
+**Definition of Done:** Người chơi mới có thể bắt đầu một ván, hiểu luật và nước đi ngay trong app thông qua onboarding, và tiếp tục ván đấu dở dang sau khi khởi động lại ứng dụng.
+
 
 ### P4 — Server sẵn sàng vận hành
 

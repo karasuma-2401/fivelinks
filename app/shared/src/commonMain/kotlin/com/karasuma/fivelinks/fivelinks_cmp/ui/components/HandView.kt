@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalVibrationEnabled
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Hand
@@ -71,6 +72,7 @@ fun HandView(
     // The hand stays visible during the opponent's turn, just quieter.
     val handAlpha by animateFloatAsState(if (isInteractive) 1f else 0.6f)
     val haptic = LocalHapticFeedback.current
+    val vibrationEnabled = LocalVibrationEnabled.current
 
     Column(
         modifier = modifier
@@ -126,7 +128,9 @@ fun HandView(
                         isCraftHighlight = isSelected && selectedIndices.size >= 2,
                         enabled = isInteractive,
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                            if (vibrationEnabled) {
+                                haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                            }
                             onCardClick(index)
                         },
                         modifier = Modifier

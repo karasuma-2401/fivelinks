@@ -5,13 +5,19 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -139,74 +146,167 @@ fun GameScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .safeDrawingPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .safeDrawingPadding()
         ) {
-            GameHeader(
-                gameState = gameState,
-                isAiThinking = uiState.isAiThinking,
-                elapsedSeconds = elapsedSeconds,
-                onRestartClick = requestRestart.takeIf { uiState.canRestart },
-                onRulesClick = { showRules = true },
-                onMenuClick = requestExit,
-                viewerId = localPlayer?.id,
-                turnSecondsRemaining = serverTurnSeconds,
-            )
+            val isWideLandscape = maxWidth >= 760.dp && maxWidth > maxHeight * 1.05f
 
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                BoardGrid(
-                    gameState = gameState,
-                    validPlacementPositions = uiState.validPlacementPositions,
-                    validSnipePositions = uiState.validSnipePositions,
-                    onCellClick = { pos -> controller.onCellClick(pos) }
-                )
-                GameNoticeBanner(
-                    notice = notice,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
-                if (uiState.opponentDisconnected) {
-                    val opponentName = gameState.players.firstOrNull { it.id != localPlayer?.id }?.name ?: "Đối thủ"
-                    Text(
-                        text = if (opponentForfeitSeconds != null) {
-                            "$opponentName mất kết nối · xử thua sau ${opponentForfeitSeconds}s"
-                        } else {
-                            "$opponentName đang mất kết nối"
-                        },
+            if (isWideLandscape) {
+                // Wide landscape layout (desktop window, tablet landscape, wide web)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    GameHeader(
+                        gameState = gameState,
+                        isAiThinking = uiState.isAiThinking,
+                        elapsedSeconds = elapsedSeconds,
+                        onRestartClick = requestRestart.takeIf { uiState.canRestart },
+                        onRulesClick = { showRules = true },
+                        onMenuClick = requestExit,
+                        viewerId = localPlayer?.id,
+                        turnSecondsRemaining = serverTurnSeconds,
+                    )
+
+                    Row(
                         modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 52.dp)
-                            .background(BrandRed.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        fontSize = 12.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = BrandRed,
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Left / main area: BoardGrid + Notices
+                        Box(
+                            modifier = Modifier
+                                .weight(1.35f)
+                                .fillMaxHeight()
+                                .padding(end = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            BoardGrid(
+                                gameState = gameState,
+                                validPlacementPositions = uiState.validPlacementPositions,
+                                validSnipePositions = uiState.validSnipePositions,
+                                onCellClick = { pos -> controller.onCellClick(pos) }
+                            )
+                            GameNoticeBanner(
+                                notice = notice,
+                                modifier = Modifier.align(Alignment.TopCenter)
+                            )
+                            if (uiState.opponentDisconnected) {
+                                val opponentName = gameState.players.firstOrNull { it.id != localPlayer?.id }?.name ?: "Đối thủ"
+                                Text(
+                                    text = if (opponentForfeitSeconds != null) {
+                                        "$opponentName mất kết nối · xử thua sau ${opponentForfeitSeconds}s"
+                                    } else {
+                                        "$opponentName đang mất kết nối"
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(top = 52.dp)
+                                        .background(BrandRed.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandRed,
+                                )
+                            }
+                        }
+
+                        // Right sidebar: TacticalCraftingBar + HandView
+                        Column(
+                            modifier = Modifier
+                                .weight(0.95f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            TacticalCraftingBar(
+                                tacticalAction = uiState.activeTacticalAction,
+                                onTriggerDivineWipe = { controller.triggerDivineWipe() }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HandView(
+                                hand = gameState.handOf(handOwner),
+                                owner = handOwner,
+                                selectedIndices = uiState.selectedCardIndices,
+                                gameState = gameState,
+                                isInteractive = isPlayerTurn,
+                                onCardClick = { index -> controller.onCardClick(index) },
+                                onSwapDeadCard = { index -> controller.swapDeadCard(index) }
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Vertical portrait/compact layout
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    GameHeader(
+                        gameState = gameState,
+                        isAiThinking = uiState.isAiThinking,
+                        elapsedSeconds = elapsedSeconds,
+                        onRestartClick = requestRestart.takeIf { uiState.canRestart },
+                        onRulesClick = { showRules = true },
+                        onMenuClick = requestExit,
+                        viewerId = localPlayer?.id,
+                        turnSecondsRemaining = serverTurnSeconds,
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        BoardGrid(
+                            gameState = gameState,
+                            validPlacementPositions = uiState.validPlacementPositions,
+                            validSnipePositions = uiState.validSnipePositions,
+                            onCellClick = { pos -> controller.onCellClick(pos) }
+                        )
+                        GameNoticeBanner(
+                            notice = notice,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                        if (uiState.opponentDisconnected) {
+                            val opponentName = gameState.players.firstOrNull { it.id != localPlayer?.id }?.name ?: "Đối thủ"
+                            Text(
+                                text = if (opponentForfeitSeconds != null) {
+                                    "$opponentName mất kết nối · xử thua sau ${opponentForfeitSeconds}s"
+                                } else {
+                                    "$opponentName đang mất kết nối"
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .padding(top = 52.dp)
+                                    .background(BrandRed.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BrandRed,
+                            )
+                        }
+                    }
+
+                    TacticalCraftingBar(
+                        tacticalAction = uiState.activeTacticalAction,
+                        onTriggerDivineWipe = { controller.triggerDivineWipe() }
+                    )
+
+                    HandView(
+                        hand = gameState.handOf(handOwner),
+                        owner = handOwner,
+                        selectedIndices = uiState.selectedCardIndices,
+                        gameState = gameState,
+                        isInteractive = isPlayerTurn,
+                        onCardClick = { index -> controller.onCardClick(index) },
+                        onSwapDeadCard = { index -> controller.swapDeadCard(index) }
                     )
                 }
             }
-
-            TacticalCraftingBar(
-                tacticalAction = uiState.activeTacticalAction,
-                onTriggerDivineWipe = { controller.triggerDivineWipe() }
-            )
-
-            HandView(
-                hand = gameState.handOf(handOwner),
-                owner = handOwner,
-                selectedIndices = uiState.selectedCardIndices,
-                gameState = gameState,
-                isInteractive = isPlayerTurn,
-                onCardClick = { index -> controller.onCardClick(index) },
-                onSwapDeadCard = { index -> controller.swapDeadCard(index) }
-            )
         }
 
         AnimatedVisibility(
@@ -246,7 +346,7 @@ fun GameScreen(
                 message = if (localPlayer != null) {
                     "Bạn sẽ rời phòng và đối thủ sẽ thắng trận này."
                 } else {
-                    "Ván đang chơi sẽ không được lưu lại."
+                    "Tiến trình ván đấu đã được lưu tự động. Bạn có thể tiếp tục bất cứ lúc nào."
                 },
                 confirmText = "Về menu",
                 dismissText = "Ở lại",

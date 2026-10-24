@@ -11,6 +11,8 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,6 +35,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -51,6 +54,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -65,11 +71,14 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIcon
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIconView
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.OnboardingDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.PlayingCardFace
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.RulesDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.components.SegmentedSelector
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandDark
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
 import fivelinks_cmp.app.shared.generated.resources.Res
 import fivelinks_cmp.app.shared.generated.resources.fivelink_wordmark
@@ -94,14 +103,24 @@ data class MenuSettings(
 @Composable
 fun MenuScreen(
     onStartGame: (GameConfig, List<Player>, Difficulty) -> Unit,
+    onResumeGame: (() -> Unit)? = null,
+    onDiscardSavedGame: (() -> Unit)? = null,
+    savedGameSummary: String? = null,
     onStartOnline: () -> Unit = {},
     modifier: Modifier = Modifier,
     settings: MenuSettings = MenuSettings(),
     onSettingsChange: (MenuSettings) -> Unit = {},
     isNightTheme: Boolean = false,
-    onToggleNightTheme: (Boolean) -> Unit = {}
+    onToggleNightTheme: (Boolean) -> Unit = {},
+    soundEnabled: Boolean = true,
+    onToggleSound: (Boolean) -> Unit = {},
+    vibrationEnabled: Boolean = true,
+    onToggleVibration: (Boolean) -> Unit = {},
+    showOnboardingInitially: Boolean = false,
+    onOnboardingComplete: () -> Unit = {},
 ) {
     var showRules by remember { mutableStateOf(false) }
+    var showOnboarding by remember { mutableStateOf(showOnboardingInitially) }
     val difficulties = Difficulty.entries
 
     Box(
@@ -135,7 +154,17 @@ fun MenuScreen(
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Resumable game banner if an offline game was left in progress
+            if (savedGameSummary != null && onResumeGame != null) {
+                ResumeMatchCard(
+                    summary = savedGameSummary,
+                    onResume = onResumeGame,
+                    onDiscard = onDiscardSavedGame ?: {},
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             SettingsPanel {
                 SectionLabel("ĐỐI THỦ")
@@ -189,6 +218,25 @@ fun MenuScreen(
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
                     )
                 }
+
+                PanelDivider()
+                SettingToggle(
+                    icon = LineIcon.Sparkle,
+                    title = "Âm thanh",
+                    subtitle = "Hiệu ứng âm thanh khi chơi",
+                    checked = soundEnabled,
+                    onCheckedChange = onToggleSound
+                )
+
+                PanelDivider()
+                SettingToggle(
+                    icon = LineIcon.Chip,
+                    title = "Rung phản hồi",
+                    subtitle = "Rung khi đặt quân, bắn tỉa và Thiên Phạt",
+                    checked = vibrationEnabled,
+                    onCheckedChange = onToggleVibration
+                )
+
                 PanelDivider()
                 SettingToggle(
                     icon = LineIcon.Moon,
@@ -224,35 +272,142 @@ fun MenuScreen(
                 LineIconView(icon = LineIcon.ArrowRight, color = PureWhite, modifier = Modifier.size(20.dp))
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            TextButton(
-                onClick = { showRules = true },
-                shape = CircleShape,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(44.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                LineIconView(
-                    icon = LineIcon.Help,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "HƯỚNG DẪN LUẬT CHƠI",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                TextButton(
+                    onClick = { showOnboarding = true },
+                    modifier = Modifier.height(44.dp)
+                ) {
+                    LineIconView(
+                        icon = LineIcon.Sparkle,
+                        color = BrandRed,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "HƯỚNG DẪN NHANH",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = BrandRed
+                    )
+                }
+
+                TextButton(
+                    onClick = { showRules = true },
+                    modifier = Modifier.height(44.dp)
+                ) {
+                    LineIconView(
+                        icon = LineIcon.Help,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "LUẬT CHI TIẾT",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        if (showOnboarding) {
+            OnboardingDialog(
+                onDismiss = {
+                    showOnboarding = false
+                    onOnboardingComplete()
+                },
+                onComplete = {
+                    showOnboarding = false
+                    onOnboardingComplete()
+                }
+            )
         }
 
         if (showRules) {
             RulesDialog(onDismiss = { showRules = false })
+        }
+    }
+}
+
+@Composable
+private fun ResumeMatchCard(
+    summary: String,
+    onResume: () -> Unit,
+    onDiscard: () -> Unit,
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(GoldAccent.copy(alpha = 0.12f))
+            .border(1.5.dp, GoldAccent.copy(alpha = 0.5f), shape)
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(GoldAccent),
+                contentAlignment = Alignment.Center
+            ) {
+                LineIconView(icon = LineIcon.ArrowRight, color = BrandDark, modifier = Modifier.size(18.dp))
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "VÁN ĐẤU ĐANG DỞ",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.5.sp,
+                    color = GoldAccent
+                )
+                Text(
+                    text = summary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedButton(
+                onClick = onDiscard,
+                shape = CircleShape,
+                modifier = Modifier.weight(0.4f).height(42.dp)
+            ) {
+                Text("BỎ QUA", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Button(
+                onClick = onResume,
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BrandDark),
+                modifier = Modifier.weight(0.6f).height(42.dp)
+            ) {
+                Text("TIẾP TỤC CHƠI", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
+            }
         }
     }
 }

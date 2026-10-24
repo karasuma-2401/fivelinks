@@ -9,6 +9,14 @@ enum class Suit(val symbol: String, val code: String) {
     HEARTS("♥", "H"),
     SPADES("♠", "S")
 }
+
+fun Suit.vietnameseName(): String = when (this) {
+    Suit.CLUBS -> "chuồn"
+    Suit.DIAMONDS -> "rô"
+    Suit.HEARTS -> "cơ"
+    Suit.SPADES -> "bích"
+}
+
 @Serializable
 enum class Rank(val short: String, val value: Int) {
     TWO("2", 2),
@@ -25,6 +33,23 @@ enum class Rank(val short: String, val value: Int) {
     KING("K", 13),
     ACE("A", 14)
 }
+
+fun Rank.vietnameseName(): String = when (this) {
+    Rank.TWO -> "2"
+    Rank.THREE -> "3"
+    Rank.FOUR -> "4"
+    Rank.FIVE -> "5"
+    Rank.SIX -> "6"
+    Rank.SEVEN -> "7"
+    Rank.EIGHT -> "8"
+    Rank.NINE -> "9"
+    Rank.TEN -> "10"
+    Rank.JACK -> "J"
+    Rank.QUEEN -> "Q"
+    Rank.KING -> "K"
+    Rank.ACE -> "A"
+}
+
 @Serializable
 data class Card(val suit: Suit, val rank: Rank) {
     override fun toString(): String {

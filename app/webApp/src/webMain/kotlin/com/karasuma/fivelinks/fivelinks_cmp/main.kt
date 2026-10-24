@@ -2,6 +2,7 @@ package com.karasuma.fivelinks.fivelinks_cmp
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
+import com.karasuma.fivelinks.fivelinks_cmp.storage.WebOfflineStorage
 import kotlinx.browser.document
 import kotlinx.browser.window
 
@@ -12,6 +13,7 @@ fun main() {
             onlineServerUrl = configuredServerUrl(),
             requireSecureOnline = !isLocalDevelopmentHost(),
             onlineProfileStore = WebOnlineProfileStore(),
+            offlineStorage = WebOfflineStorage(),
         )
     }
 }

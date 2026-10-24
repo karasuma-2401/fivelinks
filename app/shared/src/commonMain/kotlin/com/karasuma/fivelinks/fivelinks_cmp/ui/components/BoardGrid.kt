@@ -54,6 +54,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.karasuma.fivelinks.fivelinks_cmp.NoImpactHaptics
+import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalSoundController
+import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalVibrationEnabled
 import com.karasuma.fivelinks.fivelinks_cmp.domain.BoardPosition
 import com.karasuma.fivelinks.fivelinks_cmp.domain.ChipSequence
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
@@ -104,7 +107,9 @@ fun BoardGrid(
     )
     val colors = FiveLinksTheme.colors
     val haptic = LocalHapticFeedback.current
-    val impact = rememberImpactHaptics()
+    val vibrationEnabled = LocalVibrationEnabled.current
+    val soundController = LocalSoundController.current
+    val impact = if (vibrationEnabled) rememberImpactHaptics() else NoImpactHaptics
 
     // Chips removed by a snipe or by Thiên Phạt burst instead of vanishing. A snipe
     // is a lightning strike on the target; Thiên Phạt sends a golden shockwave.
@@ -123,6 +128,18 @@ fun BoardGrid(
         if (gameState.turnNumber <= before.turnNumber) return@LaunchedEffect
         // A passed turn repeats the previous move; do not replay its effects.
         if (gameState.lastMove == before.lastMove) return@LaunchedEffect
+
+        // Play sound cues for state changes
+        when (move) {
+            is Move.Place, is Move.CraftPlace -> soundController.playChipPlace()
+            is Move.Remove, is Move.CraftRemove -> soundController.playChipSnipe()
+            is Move.DivineWipe -> soundController.playDivineWipe()
+            else -> Unit
+        }
+        if (gameState.completedSequence.size > before.completedSequence.size) {
+            soundController.playSequenceComplete()
+        }
+
         if (move !is Move.Remove && move !is Move.CraftRemove && move !is Move.DivineWipe) return@LaunchedEffect
 
         val isWipe = move is Move.DivineWipe
@@ -249,7 +266,9 @@ fun BoardGrid(
                                 pulse = pulse,
                                 onClick = {
                                     if (isValidPlacement || isValidSnipe) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                        if (vibrationEnabled) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                        }
                                     }
                                     onCellClick(pos)
                                 },

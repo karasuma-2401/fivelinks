@@ -7,6 +7,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.karasuma.fivelinks.fivelinks_cmp.App
 import com.karasuma.fivelinks.fivelinks_cmp.online.JvmOnlineProfileStore
 import com.karasuma.fivelinks.fivelinks_cmp.online.ServerConfig
+import com.karasuma.fivelinks.fivelinks_cmp.storage.JvmOfflineStorage
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.fiveLinkAppIcon
 
 fun main() = application {
@@ -19,6 +20,7 @@ fun main() = application {
         App(
             onlineServerUrl = configuredServerUrl(),
             onlineProfileStore = JvmOnlineProfileStore(),
+            offlineStorage = JvmOfflineStorage(),
         )
     }
 }
