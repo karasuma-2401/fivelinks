@@ -5,7 +5,12 @@ import com.karasuma.fivelinks.fivelinks_cmp.ai.inference.NeuralInference
 import com.karasuma.fivelinks.fivelinks_cmp.ai.inference.NeuralOutput
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameConfig
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
+import com.karasuma.fivelinks.fivelinks_cmp.domain.BoardPosition
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Move
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Rank
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import kotlinx.coroutines.test.runTest
 import kotlin.math.abs
@@ -90,5 +95,36 @@ class HybridEvaluationEngineTest {
         val h = heuristic.evaluate(state, state.currentPlayer.team, pid, moves, wantPriors = false)
         val y = hybrid.evaluate(state, state.currentPlayer.team, pid, moves, wantPriors = false)
         assertEquals(h.value, y.value)
+    }
+
+    @Test
+    fun tacticalMoves_keepHeuristicPriorsInsteadOfThrowingFromTheClassicCodec() {
+        val codec = ActionCodec()
+        val normal = Move.Place("p0", Card(Suit.HEARTS, Rank.FIVE), BoardPosition(3, 4))
+        val craft = Move.CraftPlace(
+            playerId = "p0",
+            card1 = Card(Suit.CLUBS, Rank.FOUR),
+            card2 = Card(Suit.CLUBS, Rank.FIVE),
+            position = BoardPosition(4, 4),
+        )
+        val wipe = Move.DivineWipe(
+            playerId = "p0",
+            cards = listOf(Card(Suit.SPADES, Rank.TEN), Card(Suit.SPADES, Rank.JACK)),
+        )
+        val logits = FloatArray(codec.maxActions) { -10f }.also {
+            it[codec.encode(normal)] = 8f
+        }
+
+        val priors = neuralPriorsWithHeuristicFallback(
+            logits = logits,
+            moves = listOf(normal, craft, wipe),
+            codec = codec,
+            heuristicPriors = floatArrayOf(0.2f, 0.3f, 0.5f),
+        )
+
+        assertEquals(3, priors.size)
+        assertEquals(0.3f, priors[1], 1e-5f)
+        assertEquals(0.5f, priors[2], 1e-5f)
+        assertEquals(1f, priors.sum(), 1e-5f)
     }
 }

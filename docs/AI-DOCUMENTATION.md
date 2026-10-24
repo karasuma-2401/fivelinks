@@ -2,7 +2,7 @@
 
 > Project: **fivelinks-cmp**  
 > Purpose: This document provides a comprehensive overview of the Five Links AI system, its architecture, implementation details, training workflow, and performance benchmarks. It serves as the primary reference for understanding and maintaining the AI.  
-> Last Updated: [Current Date]
+> Last Updated: 24/10/2026
 
 ---
 
@@ -167,7 +167,7 @@ This interface decouples the `SearchEngine` from the specific evaluation method,
 
 *   **`IEvaluationEngine`**: Defines the `evaluate` method, which returns an `EvalResult` containing a state `value` and `policyPriors` for legal moves.
 *   **`HeuristicEvaluationEngine`**: An implementation that uses the `HeuristicEvaluator` to provide value and policy priors.
-*   **`HybridEvaluationEngine`**: An implementation that attempts to use a `NeuralInference` model first, falling back to `HeuristicEvaluationEngine` if the neural model is unavailable or fails.
+*   **`HybridEvaluationEngine`**: An implementation that attempts to use a `NeuralInference` model first, falling back to `HeuristicEvaluationEngine` if the neural model is unavailable or fails. Its policy head is intentionally limited to Classic actions: Craft Place/Remove and Divine Wipe retain their heuristic prior instead of throwing through `ActionCodec`.
 
 ### 3.7 NeuralInference (ONNX Runtime)
 
@@ -199,6 +199,7 @@ The `ActionCodec` maps game `Move` objects to a flat integer index in the action
 *   **`maxActions`**: The total size of the flattened action space (e.g., 10452).
 *   **Layout**: `place[card*100+cell] | remove[...] | swap[card]`
 *   **`encode(move: Move)`**: Converts a `Move` object into its corresponding integer index.
+*   **`encodeOrNull(move: Move)`**: Returns `null` for Tactical-only moves; callers can then preserve a heuristic prior while the policy model remains Classic-only.
 *   **`legalMask(state: GameState, playerId: PlayerId)`**: Generates a boolean array indicating which actions are legal in the current state, used to mask illegal moves in the neural network's policy output.
 
 ### 4.3 Encoder Specification (`encoder_spec.json`)

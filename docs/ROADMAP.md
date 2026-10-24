@@ -1,7 +1,7 @@
 # Five Links — Roadmap hoàn thiện sản phẩm
 
-> Cập nhật: 23/10/2026  
-> Trạng thái: P0 đã triển khai trong source, đang chờ build/test trên thiết bị; P1 đã triển khai trong source, đang chờ cấu hình endpoint thật và kiểm thử trên thiết bị; P2–P6 chưa bắt đầu.
+> Cập nhật: 24/10/2026  
+> Trạng thái: P0 và P1 đã triển khai trong source (đã pass unit/integration test trên JVM), đang chờ kiểm thử trên thiết bị thật; P2 đã triển khai và pass bộ test `:core:jvmTest`, `:app:shared:jvmTest`, `:server:test`, đang chờ benchmark trên các thiết bị mục tiêu; P3–P6 chưa bắt đầu.
 
 ## 1. Mục tiêu phát hành
 
@@ -20,7 +20,7 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
 | Game domain | Hoàn thành nền tảng | Bàn 10×10, Sequence, Jack, bỏ lượt khi kẹt, Classic/Tactical và luật Divine Wipe đã có test. |
 | UI offline | Có thể chơi | Menu hỗ trợ AI hoặc pass-and-play; màn game, hiệu ứng, dark theme và luật chơi đã có. |
 | AI | Có lõi nâng cao | Tactical, determinization/MCTS, heuristic, hybrid evaluation, ONNX JVM/Android, self-play và test hiện diện. |
-| AI trong UI offline | Cần tích hợp | `GameViewModel` hiện gọi `HeuristicEvaluator` trực tiếp, chưa dùng `AiFacadeService` (MCTS/ONNX). |
+| AI trong UI offline | P2 đã triển khai trong source | `GameViewModel` dùng `AiFacadeService` (tactical + MCTS/hybrid), chạy nền, có heuristic fallback và hủy lượt AI an toàn. |
 | Online server | Có lõi 1v1 | Room, đồng hồ lượt, reconnect, rematch, che bài đối thủ và WebSocket đã triển khai. |
 | Online client | Có hạ tầng | `OnlineClient`, `OnlineSession`, `OnlineGameController` và test có sẵn. |
 | Online trong app | P0 đã triển khai | Menu → lobby → game, tạo/vào phòng, reconnect/rematch/rời phòng và `OnlineGameController` đã được nối vào app. |
@@ -29,9 +29,8 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
 
 ### Nợ kỹ thuật đáng chú ý
 
-- `ActionCodec` của neural model chỉ hỗ trợ nước đi Classic. Khi game Tactical cần prior neural, lỗi được bắt rồi fallback heuristic; cần làm fallback có chủ đích hoặc mở rộng action space.
-- Tài liệu AI đã lạc hậu so với source: Search/MCTS, encoder và ONNX đã tồn tại.
-- Chưa có kết quả test mới trong phiên rà soát này vì Gradle phải tải wrapper/dependency trước; cần chạy lại bộ test đầy đủ khi môi trường đã sẵn sàng.
+- Tài liệu AI đã được đồng bộ với Search/MCTS, encoder, ONNX và xử lý priors cho Tactical.
+- Bộ test `:core:jvmTest`, `:app:shared:jvmTest` và `:server:test` đã chạy xanh; cần tiếp tục kiểm thử thủ công/benchmark trên thiết bị Android và trình duyệt Web mục tiêu.
 
 ## 3. Thứ tự triển khai
 
@@ -62,7 +61,7 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
 
 **Còn để hoàn thành ngoài source:** provisioning staging/production thật, secret/secure-cookie cho hệ thống tài khoản sau này và kiểm thử lifecycle trên thiết bị Android/iOS/Web.
 
-### P2 — Đồng nhất và hoàn thiện AI
+### P2 — Đồng nhất và hoàn thiện AI 🚧
 
 **Mục tiêu:** cấp độ AI trong menu thực sự phản ánh engine đã xây và không gây lag UI.
 
@@ -74,7 +73,9 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
    - dài hạn: mở rộng codec, encoder, self-play và ONNX model để hỗ trợ toàn bộ action space Tactical.
 5. Bổ sung regression/arena test cho cả Classic và Tactical.
 
-**Definition of Done:** Easy/Medium/Hard khác biệt rõ, UI không bị block, mọi nước AI hợp lệ, và Tactical không phát sinh fallback do exception.
+**Đã triển khai:** `GameViewModel` gọi `AiFacadeService` trên dispatcher nền; khi facade lỗi thì heuristic chọn nước hợp lệ. Lượt AI được hủy khi tạo ván mới/rời game và generation token chặn kết quả cũ ghi đè state mới. Easy/Medium/Hard dùng budget search riêng (80/50 ms, 400/150 ms, 2000/600 ms). Neural policy chỉ áp dụng nước Classic, còn Craft/Divine Wipe giữ heuristic priors có chủ đích thay vì ném exception từ `ActionCodec`. `TacticalEngine` đã hỗ trợ chặn open-four bằng `CraftPlace`/`CraftRemove`/`DivineWipe`, và bộ test regression/arena (`AiRegressionTest`, `AiArenaTest`, `AiBenchmarkArenaTest`, `GameViewModelTest`) đã bao phủ cả Classic lẫn Tactical.
+
+**Còn để xác nhận ngoài source:** chạy benchmark/arena trên Android, Desktop và Web mục tiêu để chốt budget thực tế; action space, training data và ONNX model đầy đủ cho Tactical là hạng mục dài hạn.
 
 ### P3 — Chất lượng trải nghiệm offline
 

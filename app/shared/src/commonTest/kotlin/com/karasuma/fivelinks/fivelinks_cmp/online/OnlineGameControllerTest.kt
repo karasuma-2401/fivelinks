@@ -79,7 +79,7 @@ class OnlineGameControllerTest {
         assertNotNull(state.turnEndsAt)
         assertFalse(state.canRestart)
         // GameScreen uses localPlayerId to keep this hand visible during the opponent's turn.
-        assertEquals(dealt.hands.getValue(ME), state.gameState.handOf(ME))
+        assertEquals(dealt.hands.getValue(ME), state.gameState.hands.getValue(ME))
     }
 
     @Test

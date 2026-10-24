@@ -85,6 +85,7 @@ fun App(
         fun exitOnline() {
             val leavingSession = onlineSession
             onlineSession = null
+            activeController?.close()
             activeController = null
             currentScreen = AppScreen.MENU
             scope.launch { leavingSession?.leaveRoomAndClose() }
@@ -158,6 +159,7 @@ fun App(
                                 onExitToMenu = {
                                     if (controller is OnlineGameController) exitOnline()
                                     else {
+                                        controller.close()
                                         activeController = null
                                         currentScreen = AppScreen.MENU
                                     }

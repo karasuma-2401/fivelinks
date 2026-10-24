@@ -6,7 +6,6 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Move
 import com.karasuma.fivelinks.fivelinks_cmp.domain.PlayerId
-import kotlin.math.abs
 
 class TacticalEngine(
     private val heuristic: HeuristicEvaluator = HeuristicEvaluator()
@@ -29,7 +28,8 @@ class TacticalEngine(
         // 2. Block opponent's open-four
         val oppTeams = state.config.teams - myTeam
         val dangerCells = oppTeams.flatMap { ThreatDetector.openFoursEmptyCells(state, it) }.toSet()
-        if (dangerCells.isNotEmpty()) {
+        val beforeThreat = oppTeams.sumOf { ThreatDetector.countOpenFours(state, it) }
+        if (dangerCells.isNotEmpty() || beforeThreat > 0) {
             val blockPlaces = moves.filterIsInstance<Move.Place>().filter { it.position in dangerCells }
             if (blockPlaces.isNotEmpty()) {
                 return blockPlaces.maxBy { heuristic.score(state, it, playerId) }
@@ -37,15 +37,40 @@ class TacticalEngine(
 
             val removes = moves.filterIsInstance<Move.Remove>()
             if (removes.isNotEmpty()) {
-                val beforeThreat = oppTeams.sumOf { ThreatDetector.countOpenFours(state, it) }
                 val usefulRemoves = removes.filter { move ->
                     val after = GameEngine.applyMove(state, move).getOrNull() ?: return@filter false
                     val afterThreat = oppTeams.sumOf { ThreatDetector.countOpenFours(after, it) }
                     afterThreat < beforeThreat
                 }
                 if (usefulRemoves.isNotEmpty()) {
-                    return findBestRemoveTarget(usefulRemoves)
+                    return findBestRemoveTarget(usefulRemoves) { it.position }
                 }
+            }
+
+            val craftBlockPlaces = moves.filterIsInstance<Move.CraftPlace>().filter { it.position in dangerCells }
+            if (craftBlockPlaces.isNotEmpty()) {
+                return craftBlockPlaces.maxBy { heuristic.score(state, it, playerId) }
+            }
+
+            val craftRemoves = moves.filterIsInstance<Move.CraftRemove>()
+            if (craftRemoves.isNotEmpty()) {
+                val usefulCraftRemoves = craftRemoves.filter { move ->
+                    val after = GameEngine.applyMove(state, move).getOrNull() ?: return@filter false
+                    val afterThreat = oppTeams.sumOf { ThreatDetector.countOpenFours(after, it) }
+                    afterThreat < beforeThreat
+                }
+                if (usefulCraftRemoves.isNotEmpty()) {
+                    return findBestRemoveTarget(usefulCraftRemoves) { it.position }
+                }
+            }
+
+            val wipes = moves.filterIsInstance<Move.DivineWipe>().filter { move ->
+                val after = GameEngine.applyMove(state, move).getOrNull() ?: return@filter false
+                val afterThreat = oppTeams.sumOf { ThreatDetector.countOpenFours(after, it) }
+                afterThreat < beforeThreat
+            }
+            if (wipes.isNotEmpty()) {
+                return wipes.first()
             }
         }
 
@@ -61,16 +86,17 @@ class TacticalEngine(
         return null
     }
 
-    private fun findBestRemoveTarget(moves: List<Move.Remove>): Move.Remove {
+    private fun <T : Move> findBestRemoveTarget(moves: List<T>, positionOf: (T) -> BoardPosition): T {
         if (moves.size == 1) return moves.first()
 
-        val positions = moves.map { it.position }
+        val positions = moves.map(positionOf)
         val avgRow = positions.map { it.row }.average()
         val avgCol = positions.map { it.column }.average()
 
         return moves.minBy {
-            val dr = it.position.row - avgRow
-            val dc = it.position.column - avgCol
+            val pos = positionOf(it)
+            val dr = pos.row - avgRow
+            val dc = pos.column - avgCol
             dr * dr + dc * dc // Squared Euclidean distance to the center
         }
     }

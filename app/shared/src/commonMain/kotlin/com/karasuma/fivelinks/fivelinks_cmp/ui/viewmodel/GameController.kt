@@ -17,4 +17,7 @@ interface GameController {
 
     /** Offline: deal a new game. Online: ask the opponent for a rematch. */
     fun startNewGame()
+
+    /** Release work owned by this controller when its screen is left. */
+    fun close() = Unit
 }

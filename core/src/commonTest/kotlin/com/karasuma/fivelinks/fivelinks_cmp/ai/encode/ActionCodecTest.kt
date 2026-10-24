@@ -12,6 +12,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ActionCodecTest {
@@ -53,6 +54,19 @@ class ActionCodecTest {
 
         val expected = codec.placeSize + codec.removeSize + cardIndex.getValue(card)
         assertEquals(expected, codec.encode(move))
+    }
+
+    @Test
+    fun tacticalMoves_areExplicitlyOutsideTheClassicPolicy() {
+        val craft = Move.CraftPlace(
+            playerId = "p0",
+            card1 = Card(Suit.CLUBS, Rank.FOUR),
+            card2 = Card(Suit.CLUBS, Rank.FIVE),
+            position = BoardPosition(4, 4),
+        )
+
+        assertTrue(!codec.supports(craft))
+        assertNull(codec.encodeOrNull(craft))
     }
 
     @Test

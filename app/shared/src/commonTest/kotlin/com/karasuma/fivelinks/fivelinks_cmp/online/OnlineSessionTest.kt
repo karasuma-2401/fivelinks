@@ -70,6 +70,7 @@ class OnlineSessionTest {
         val session = startedSession()
 
         session.pause()
+        runCurrent()
         assertFalse(connection.started)
         assertEquals(ConnectionState.Offline, session.state.value.connection)
 

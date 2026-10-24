@@ -15,6 +15,8 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class AiRegressionTest {
 
@@ -43,6 +45,80 @@ class AiRegressionTest {
         val expectedMove = Move.Remove("p0", Card(Suit.SPADES, Rank.JACK), BoardPosition(2, 2))
         val chosenMove = ai.chooseMove(state, "p0", Difficulty.HARD)
         assertEquals(MoveKey.from(expectedMove), MoveKey.from(chosenMove))
+    }
+
+    @Test
+    fun `tactical_mustWinWithCraftPlace_whenPairCompletesSequence`() = runTest {
+        val config = GameConfig.tactical(playerCount = 2, teams = 2, seed = 43).copy(sequenceToWin = 1)
+        val players = listOf(Player("p0", "Red", Team.RED, true), Player("p1", "Blue", Team.BLUE, true))
+        val initialState = GameEngine.initialize(config, players)
+        val chips = initialState.chips
+            .place(BoardPosition(7, 0), Team.RED)
+            .place(BoardPosition(7, 1), Team.RED)
+            .place(BoardPosition(7, 2), Team.RED)
+            .place(BoardPosition(7, 3), Team.RED)
+        val state = initialState.copy(
+            hands = mapOf(
+                "p0" to Hand(listOf(Card(Suit.CLUBS, Rank.FOUR), Card(Suit.SPADES, Rank.FOUR))),
+                "p1" to Hand(listOf(Card(Suit.HEARTS, Rank.KING), Card(Suit.SPADES, Rank.QUEEN))),
+            ),
+            chips = chips,
+            currentPlayerIndex = 0,
+        )
+
+        val chosenMove = ai.chooseMove(state, "p0", Difficulty.HARD)
+        val craftPlace = assertIs<Move.CraftPlace>(chosenMove)
+        assertEquals(BoardPosition(7, 4), craftPlace.position)
+    }
+
+    @Test
+    fun `tactical_mustBlockWithCraftRemove_whenSuitedConnectorsBreakThreat`() = runTest {
+        val config = GameConfig.tactical(playerCount = 2, teams = 2, seed = 44).copy(sequenceToWin = 1)
+        val players = listOf(Player("p0", "Red", Team.RED, true), Player("p1", "Blue", Team.BLUE, true))
+        val initialState = GameEngine.initialize(config, players)
+        val chips = initialState.chips
+            .place(BoardPosition(2, 1), Team.BLUE)
+            .place(BoardPosition(2, 2), Team.BLUE)
+            .place(BoardPosition(2, 3), Team.BLUE)
+            .place(BoardPosition(2, 4), Team.BLUE)
+            .place(BoardPosition(2, 5), Team.RED)
+        val state = initialState.copy(
+            hands = mapOf(
+                "p0" to Hand(listOf(Card(Suit.CLUBS, Rank.FOUR), Card(Suit.CLUBS, Rank.FIVE))),
+                "p1" to Hand(listOf(Card(Suit.HEARTS, Rank.KING), Card(Suit.DIAMONDS, Rank.QUEEN))),
+            ),
+            chips = chips,
+            currentPlayerIndex = 0,
+        )
+
+        val chosenMove = ai.chooseMove(state, "p0", Difficulty.HARD)
+        val craftRemove = assertIs<Move.CraftRemove>(chosenMove)
+        assertEquals(BoardPosition(2, 2), craftRemove.position)
+    }
+
+    @Test
+    fun `tactical_hybridSearch_choosesLegalMoveWhenCraftingAndDivineWipeAreAvailable`() = runTest {
+        val config = GameConfig.tactical(playerCount = 2, teams = 2, seed = 45)
+        val players = listOf(Player("p0", "Red", Team.RED, true), Player("p1", "Blue", Team.BLUE, true))
+        val initialState = GameEngine.initialize(config, players)
+        val state = initialState.copy(
+            hands = mapOf(
+                "p0" to Hand(
+                    listOf(
+                        Card(Suit.SPADES, Rank.FOUR),
+                        Card(Suit.SPADES, Rank.FIVE),
+                        Card(Suit.SPADES, Rank.SIX),
+                        Card(Suit.HEARTS, Rank.FOUR),
+                    )
+                ),
+                "p1" to Hand(listOf(Card(Suit.HEARTS, Rank.KING), Card(Suit.DIAMONDS, Rank.QUEEN))),
+            ),
+            chips = initialState.chips.place(BoardPosition(4, 4), Team.BLUE),
+            currentPlayerIndex = 0,
+        )
+
+        val chosenMove = ai.chooseMove(state, "p0", Difficulty.HARD)
+        assertTrue(GameEngine.applyMove(state, chosenMove).isSuccess)
     }
 
     private fun createMustWinState(): GameState {

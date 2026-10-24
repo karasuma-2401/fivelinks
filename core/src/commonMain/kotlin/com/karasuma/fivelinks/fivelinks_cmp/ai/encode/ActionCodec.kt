@@ -16,6 +16,15 @@ class ActionCodec (
     val swapSize: Int get() = numCards
     val maxActions: Int get() = placeSize + removeSize + swapSize
 
+    /** The current neural policy was trained only on Classic actions. */
+    fun supports(move: Move): Boolean = when (move) {
+        is Move.Place, is Move.Remove, is Move.SwapDeadCard -> true
+        is Move.CraftPlace, is Move.CraftRemove, is Move.DivineWipe -> false
+    }
+
+    /** Null lets callers deliberately use another prior for Tactical-only actions. */
+    fun encodeOrNull(move: Move): Int? = if (supports(move)) encode(move) else null
+
     fun encode(move: Move): Int {
          val ci = cardIndex.getValue(move.card)
         return when (move) {

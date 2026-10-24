@@ -6,14 +6,14 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertTrue
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource
 
 class AiBenchmarkArenaTest {
 
     @Test
-    fun `hybridHard_vs_heuristicHard`() = runTest (timeout = Duration.INFINITE) {
+    fun `hybridHard_vs_heuristicHard`() = runTest(timeout = Duration.INFINITE) {
         // Hybrid (Neural + Heuristic)
         val hybridAi = AiFacadeService() // Default constructor uses neural if available
 
@@ -24,9 +24,11 @@ class AiBenchmarkArenaTest {
         var heuristicWins = 0
         var draws = 0
         val latencies = mutableListOf<Long>()
-        val totalGames = 100 // Increase for more reliable results
+        // Keep default smoke count small so `:core:jvmTest` completes in seconds;
+        // raise to 100 when running a full model promotion benchmark.
+        val totalGames = 2
 
-        println("Starting Arena: Hybrid HARD vs Heuristic HARD ($totalGames games)...")
+        println("Starting Arena: Hybrid HARD vs Heuristic HARD ($totalGames games, Classic + Tactical)...")
 
         repeat(totalGames) { gameIndex ->
             val seed = 1000L + gameIndex
@@ -34,10 +36,18 @@ class AiBenchmarkArenaTest {
                 Player("p0", "Hybrid", Team.RED, true),
                 Player("p1", "Heuristic", Team.BLUE, true)
             )
-            var state = GameEngine.initialize(GameConfig.forPlayer(2, 2, seed = seed), players)
+            val config = if (gameIndex % 2 == 0) {
+                GameConfig.forPlayer(2, 2, seed = seed)
+            } else {
+                GameConfig.tactical(playerCount = 2, teams = 2, seed = seed).copy(sequenceToWin = 1)
+            }
+            var state = GameEngine.initialize(config, players)
             var guard = 0
 
             while (!state.isGameOver && guard++ < 500) {
+                state = GameEngine.skipStuckTurns(state).state
+                if (state.isGameOver) break
+
                 val ai = if (state.currentPlayer.id == "p0") hybridAi else heuristicAi
                 val difficulty = Difficulty.HARD
 
@@ -56,9 +66,7 @@ class AiBenchmarkArenaTest {
                 Team.BLUE -> heuristicWins++
                 else -> draws++
             }
-            if ((gameIndex + 1) % 10 == 0) {
-                println("... Game ${gameIndex + 1} finished.")
-            }
+            println("... Game ${gameIndex + 1} finished (winner=${state.winner}, turns=${state.turnNumber}).")
         }
 
         println("\n--- Arena Results ---")
@@ -73,6 +81,7 @@ class AiBenchmarkArenaTest {
         } else {
             println("No latency data collected.")
         }
+        assertTrue(latencies.isNotEmpty(), "Expected Hybrid AI to record move latencies")
     }
 
     private fun formatPercent(value: Int, total: Int): String {
