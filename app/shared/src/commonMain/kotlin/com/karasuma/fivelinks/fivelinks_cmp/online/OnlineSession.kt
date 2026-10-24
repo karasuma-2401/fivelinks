@@ -286,4 +286,6 @@ internal fun rejectionText(rejected: ServerMessage.Rejected): String = when (rej
     ErrorCodes.PROTOCOL_VERSION_MISMATCH -> "Hãy cập nhật FiveLink lên bản mới nhất để chơi online."
     ErrorCodes.SESSION_EXPIRED -> "Phiên chơi cũ đã hết hạn."
     ErrorCodes.INTERNAL_ERROR -> "Máy chủ đang gặp lỗi, bạn thử lại sau nhé."
+    ErrorCodes.RATE_LIMITED -> "Thao tác quá nhanh. Bạn vui lòng thử lại sau vài giây."
+    ErrorCodes.SERVER_BUSY -> "Máy chủ đang bận hoặc quá tải. Bạn vui lòng thử lại sau ít phút."
 }

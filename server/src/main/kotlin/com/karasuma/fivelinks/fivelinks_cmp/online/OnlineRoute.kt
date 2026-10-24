@@ -17,6 +17,16 @@ import kotlinx.coroutines.withContext
 /** Online play: one WebSocket per player, one JSON message per text frame. */
 fun Route.onlineRoute(server: GameServer) {
     webSocket("/ws") {
+        val origin = call.request.headers["Origin"]
+        if (!server.config.isOriginAllowed(origin)) {
+            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Origin not allowed"))
+            return@webSocket
+        }
+        if (server.isShuttingDown) {
+            close(CloseReason(CloseReason.Codes.GOING_AWAY, "Server is shutting down"))
+            return@webSocket
+        }
+
         val connection = ClientConnection()
         val writer = launch {
             try {

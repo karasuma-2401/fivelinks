@@ -405,4 +405,62 @@ class GameServerTest {
         client.send(ClientMessage.Ping("1", clientTime = 1))
         client.drain().only<ServerMessage.Pong>()
     }
+
+    @Test
+    fun roomCapacity_reached_rejectsCreateRoom() = runTest {
+        val config = OnlineConfig(maxRooms = 1)
+        val server = GameServer(backgroundScope, config, testScheduler.timeSource, Random(7))
+        val host1 = FakeClient(server).hello("Host1")
+        host1.send(ClientMessage.CreateRoom(host1.nextId()))
+        assertEquals(RoomStatus.WAITING, host1.drain().only<ServerMessage.RoomState>().status)
+
+        val host2 = FakeClient(server).hello("Host2")
+        host2.send(ClientMessage.CreateRoom(host2.nextId()))
+        val rejected = host2.drain().only<ServerMessage.Rejected>()
+        assertEquals(ErrorCodes.SERVER_BUSY, rejected.reason)
+    }
+
+    @Test
+    fun sessionCapacity_reached_rejectsHello() = runTest {
+        val config = OnlineConfig(maxSessions = 1)
+        val server = GameServer(backgroundScope, config, testScheduler.timeSource, Random(7))
+        val client1 = FakeClient(server)
+        client1.hello("Client1")
+
+        val client2 = FakeClient(server)
+        client2.send(ClientMessage.Hello(client2.nextId(), playerName = "Client2"))
+        val rejected = client2.drain().only<ServerMessage.Rejected>()
+        assertEquals(ErrorCodes.SERVER_BUSY, rejected.reason)
+    }
+
+    @Test
+    fun rateLimiter_flood_rejectsWithRateLimited() = runTest {
+        val config = OnlineConfig(rateLimitPerMinute = 2, rateLimitEnabled = true)
+        val server = GameServer(backgroundScope, config, testScheduler.timeSource, Random(7))
+        val client = FakeClient(server)
+        // 1st request
+        client.send(ClientMessage.Ping(client.nextId(), clientTime = 1))
+        client.drain().only<ServerMessage.Pong>()
+        // 2nd request
+        client.send(ClientMessage.Ping(client.nextId(), clientTime = 2))
+        client.drain().only<ServerMessage.Pong>()
+        // 3rd request (exceeds limit 2)
+        client.send(ClientMessage.Ping(client.nextId(), clientTime = 3))
+        val rejected = client.drain().only<ServerMessage.Rejected>()
+        assertEquals(ErrorCodes.RATE_LIMITED, rejected.reason)
+    }
+
+    @Test
+    fun serverShutdown_notifiesActiveRooms() = runTest {
+        val server = newServer()
+        val (host, guest) = startedGame(server)
+        host.drain()
+        guest.drain()
+
+        server.shutdown()
+        val hostClosed = host.drain().only<ServerMessage.RoomClosed>()
+        val guestClosed = guest.drain().only<ServerMessage.RoomClosed>()
+        assertEquals(RoomCloseReason.SERVER_SHUTDOWN, hostClosed.reason)
+        assertEquals(RoomCloseReason.SERVER_SHUTDOWN, guestClosed.reason)
+    }
 }

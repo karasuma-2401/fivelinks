@@ -93,17 +93,23 @@ Desktop và iOS tiếp tục được giữ khả năng biên dịch; mức đ�
 **Definition of Done:** Người chơi mới có thể bắt đầu một ván, hiểu luật và nước đi ngay trong app thông qua onboarding, và tiếp tục ván đấu dở dang sau khi khởi động lại ứng dụng.
 
 
-### P4 — Server sẵn sàng vận hành
+### P4 — Server sẵn sàng vận hành ✅
 
 **Mục tiêu:** chạy server 1v1 an toàn và có thể quan sát trong môi trường staging/production.
 
-1. Đưa port, CORS/origin WebSocket, thời hạn room/session và logging vào environment config.
-2. Thêm rate limit cho handshake, tạo/vào phòng và submit move; thêm room/session capacity rõ ràng.
-3. Thêm readiness/liveness health check, structured logging, metrics cơ bản và cảnh báo lỗi.
-4. Chọn chính sách khởi động lại server: thông báo ván online bị hủy, hoặc bổ sung persistence nếu muốn phục hồi room.
-5. Viết hướng dẫn deploy, rollback và xử lý sự cố.
+1. Đưa port, CORS/origin WebSocket, thời hạn room/session, giới hạn dung lượng và logging vào environment config (`OnlineConfig.fromEnvironment()`).
+2. Thêm rate limit (`RateLimiter`) trượt thời gian chống flood tin nhắn và thao tác đánh bài; thêm ngưỡng room (`MAX_ROOMS`) và session capacity (`MAX_SESSIONS`) trả về mã lỗi chuẩn `SERVER_BUSY` và `RATE_LIMITED`.
+3. Bổ sung các điểm cuối giám sát tiêu chuẩn production: `/health`, `/health/liveness`, `/health/readiness` (kiểm tra trạng thái tải và tắt máy), `/metrics` (uptime, RAM JVM, số phòng, số nước đi, số lượt hit rate-limit).
+4. Chuẩn hóa structured logging (`logback.xml`) với biến môi trường `LOG_LEVEL` linh hoạt cho console/container log.
+5. Thiết lập cơ chế Graceful Shutdown tự động qua `ApplicationStopping` của Ktor: báo hiệu trạng thái `SHUTTING_DOWN` cho Load Balancer ngắt traffic mới, gửi `RoomClosed(SERVER_SHUTDOWN)` cho toàn bộ phòng đang chơi để client trở về menu êm đẹp, sau đó đóng socket sạch sẽ.
+6. Đóng gói container đa tầng (`server/Dockerfile`) siêu nhẹ dựa trên Alpine JRE 21 với non-root user và healthcheck tích hợp.
+7. Soạn thảo tài liệu vận hành chi tiết `docs/SERVER_OPERATIONS.md` bao gồm bảng biến môi trường, Docker Compose, cấu hình Caddy/Nginx reverse proxy, quy trình rollback và sổ tay xử lý sự cố.
+8. Hoàn thiện bộ kiểm thử `ProductionReadinessTest`, `ApplicationTest`, và mở rộng `GameServerTest` bao phủ toàn bộ tính năng vận hành mới.
 
-**Definition of Done:** staging chịu được kết nối lỗi/phát lại request phổ biến, có log/metric để chẩn đoán, và không mở WebSocket tùy ý ngoài policy đã định.
+**Đã triển khai:** Đầy đủ hạ tầng cấu hình, rate limiting, giám sát health/metrics, graceful shutdown, containerization và tài liệu vận hành; toàn bộ test suite máy chủ đạt 100% pass.
+
+**Definition of Done:** Staging và production chịu được kết nối lỗi, flood request, có log và metric giám sát đầy đủ, từ chối origin trái phép và tự động tắt máy/khởi động lại an toàn không làm đơ ứng dụng người chơi.
+
 
 ### P5 — Release engineering và đảm bảo chất lượng
 

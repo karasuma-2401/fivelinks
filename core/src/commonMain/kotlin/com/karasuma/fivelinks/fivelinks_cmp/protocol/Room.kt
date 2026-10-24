@@ -44,4 +44,6 @@ data class RoomPlayer(
 enum class RoomCloseReason {
     /** Nobody joined the waiting room in time. */
     EXPIRED,
+    /** The server is shutting down or restarting for maintenance. */
+    SERVER_SHUTDOWN,
 }

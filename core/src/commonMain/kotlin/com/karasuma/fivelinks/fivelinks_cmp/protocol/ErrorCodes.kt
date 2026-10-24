@@ -18,4 +18,8 @@ enum class ErrorCodes {
     STALE_TURN,
     /** The session token is unknown or has expired; start a new session. */
     SESSION_EXPIRED,
+    /** Too many requests in a short period; client should back off. */
+    RATE_LIMITED,
+    /** Server is currently at room or session capacity, or shutting down. */
+    SERVER_BUSY,
 }

@@ -48,11 +48,16 @@ import kotlin.time.TimeSource
  */
 class GameServer(
     scope: CoroutineScope,
-    private val config: OnlineConfig = OnlineConfig(),
+    val config: OnlineConfig = OnlineConfig(),
     private val timeSource: TimeSource.WithComparableMarks = TimeSource.Monotonic,
     private val random: Random = SecureRandom().asKotlinRandom(),
 ) {
     private val log = LoggerFactory.getLogger(GameServer::class.java)
+    val metrics = ServerMetrics()
+    val generalRateLimiter = RateLimiter(config.rateLimitPerMinute, windowMillis = 60_000L)
+    var isShuttingDown: Boolean = false
+        private set
+
     private val timers = CoroutineScope(
         scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job]) +
             CoroutineExceptionHandler { _, error -> log.error("Online timer failed", error) }
@@ -71,8 +76,37 @@ class GameServer(
         }
     }
 
+    fun activeRoomCount(): Int = rooms.size
+    fun activeSessionCount(): Int = sessions.size
+
+    fun status(): ServerStatusPayload = metrics.toStatus(
+        activeRooms = rooms.size,
+        activeSessions = sessions.size,
+        maxRooms = config.maxRooms,
+        maxSessions = config.maxSessions,
+        isShuttingDown = isShuttingDown,
+    )
+
+    fun metrics(): ServerMetricsPayload = metrics.toMetrics(
+        activeRooms = rooms.size,
+        activeSessions = sessions.size,
+        maxRooms = config.maxRooms,
+        maxSessions = config.maxSessions,
+        isShuttingDown = isShuttingDown,
+    )
+
     /** Handles one message from [connection]. */
     suspend fun handle(connection: ClientConnection, message: ClientMessage) {
+        if (config.rateLimitEnabled) {
+            val key = connection.session?.token ?: connection.hashCode().toString()
+            if (!generalRateLimiter.tryAcquire(key)) {
+                metrics.totalRateLimitHits.incrementAndGet()
+                log.warn("Rate limit exceeded for key {} on message {}", key, message::class.simpleName)
+                connection.send(rejected(ErrorCodes.RATE_LIMITED, "Rate limit exceeded. Please slow down.", message.messageId))
+                return
+            }
+        }
+
         mutex.withLock {
             try {
                 dispatch(connection, message)
@@ -110,6 +144,23 @@ class GameServer(
         }
     }
 
+    /** Gracefully closes all rooms and notifies clients when the server stops. */
+    suspend fun shutdown() {
+        mutex.withLock {
+            if (isShuttingDown) return
+            isShuttingDown = true
+            log.info("Server shutting down, closing {} active rooms and {} sessions", rooms.size, sessions.size)
+            for (room in rooms.values.toList()) {
+                closeRoom(room, RoomCloseReason.SERVER_SHUTDOWN)
+            }
+            for (session in sessions.values.toList()) {
+                session.connection?.close()
+            }
+            rooms.clear()
+            sessions.clear()
+        }
+    }
+
     private fun dispatch(connection: ClientConnection, message: ClientMessage) {
         when (message) {
             is ClientMessage.Ping -> connection.send(ServerMessage.Pong(nextId(), System.currentTimeMillis()))
@@ -140,11 +191,24 @@ class GameServer(
             connection.close()
             return
         }
+        if (isShuttingDown) {
+            connection.send(rejected(ErrorCodes.SERVER_BUSY, "Server is shutting down for maintenance", hello.messageId))
+            connection.close()
+            return
+        }
         if (connection.session != null) {
             connection.send(rejected(ErrorCodes.INVALID_REQUEST, "Already said hello", hello.messageId))
             return
         }
         val token = hello.sessionToken
+        if (token == null && sessions.size >= config.maxSessions) {
+            metrics.totalRateLimitHits.incrementAndGet()
+            log.warn("Session capacity reached: {}/{}", sessions.size, config.maxSessions)
+            connection.send(rejected(ErrorCodes.SERVER_BUSY, "Server session capacity reached", hello.messageId))
+            connection.close()
+            return
+        }
+
         val session = if (token == null) {
             newSession(cleanName(hello.playerName))
         } else {
@@ -175,6 +239,14 @@ class GameServer(
     }
 
     private fun createRoom(request: Request, settings: RoomSettings) {
+        if (isShuttingDown) {
+            return request.reject(ErrorCodes.SERVER_BUSY, "Server is shutting down for maintenance")
+        }
+        if (rooms.size >= config.maxRooms) {
+            metrics.totalRateLimitHits.incrementAndGet()
+            log.warn("Room capacity reached: {}/{}", rooms.size, config.maxRooms)
+            return request.reject(ErrorCodes.SERVER_BUSY, "Server room capacity reached")
+        }
         if (settings.sequenceToWin !in 1..2) {
             return request.reject(ErrorCodes.INVALID_REQUEST, "sequenceToWin must be 1 or 2")
         }
@@ -188,6 +260,7 @@ class GameServer(
         room.seats += Seat(session, Team.BLUE)
         session.room = room
         rooms[code] = room
+        metrics.totalRoomsCreated.incrementAndGet()
         room.expiryJob = timers.launch {
             delay(config.waitingRoomTtl)
             mutex.withLock {
@@ -249,6 +322,7 @@ class GameServer(
         val next = GameEngine.applyMove(state, message.move).getOrElse {
             return request.reject(ErrorCodes.ILLEGAL_MOVE, it.message ?: "Illegal move")
         }
+        metrics.totalMovesSubmitted.incrementAndGet()
         advance(room, next, listOf(GameEvent.MovePlayed(playerId, message.move)))
     }
 
@@ -363,6 +437,7 @@ class GameServer(
     }
 
     private fun finishGame(room: GameRoom, result: GameResult) {
+        metrics.totalGamesFinished.incrementAndGet()
         room.turnJob?.cancel()
         room.turnJob = null
         room.turnEndsAt = null
@@ -423,6 +498,9 @@ class GameServer(
             .forEach(::removeRoom)
         sessions.values.removeAll {
             it.connection == null && it.room == null && it.lastSeen + config.idleSessionTtl <= now
+        }
+        if (config.rateLimitEnabled) {
+            generalRateLimiter.cleanup()
         }
     }
 
