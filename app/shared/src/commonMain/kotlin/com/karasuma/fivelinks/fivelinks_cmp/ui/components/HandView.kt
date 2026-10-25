@@ -14,6 +14,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -35,11 +36,19 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.IntOffset
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -58,6 +67,8 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.isJack
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.primaryColor
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @Composable
 fun HandView(
@@ -71,7 +82,10 @@ fun HandView(
     modifier: Modifier = Modifier,
     enabledIndices: Set<Int>? = null,
     guidedIndices: Set<Int>? = null,
-    guideLabel: String? = null
+    guideLabel: String? = null,
+    onReorderHand: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
+    onCardDragHover: ((cardIndex: Int, globalOffset: Offset) -> Unit)? = null,
+    onCardDrop: ((cardIndex: Int, globalOffset: Offset) -> Unit)? = null,
 ) {
     fun isCardDead(card: Card): Boolean {
         if (card.isJack()) return false
@@ -96,6 +110,10 @@ fun HandView(
             repeatMode = RepeatMode.Reverse
         )
     )
+
+    var draggingIndex by remember { mutableStateOf<Int?>(null) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    var cardPositions by remember { mutableStateOf(mapOf<Int, Offset>()) }
 
     Column(
         modifier = modifier
@@ -148,12 +166,75 @@ fun HandView(
                     val isGuided = guidedIndices != null && index in guidedIndices && !isSelected
                     val cardAlpha = if (enabledIndices != null && index !in enabledIndices) 0.35f else 1f
                     val fromMiddle = index - middle
+                    val isDraggingThis = draggingIndex == index
+                    val dragY = if (isDraggingThis) dragOffset.y else 0f
+                    val dragX = if (isDraggingThis) dragOffset.x else 0f
 
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .offset(x = startX + step * index, y = (fromMiddle * fromMiddle * 1.4f).dp - 10.dp)
-                            .zIndex(if (isSelected) 50f else if (isGuided) 45f else index.toFloat())
+                            .offset {
+                                if (isDraggingThis) {
+                                    IntOffset(dragX.roundToInt(), dragY.roundToInt())
+                                } else {
+                                    IntOffset.Zero
+                                }
+                            }
+                            .zIndex(if (isDraggingThis) 150f else if (isSelected) 50f else if (isGuided) 45f else index.toFloat())
+                            .onGloballyPositioned { coordinates ->
+                                if (draggingIndex == null) {
+                                    cardPositions = cardPositions + (index to coordinates.positionInRoot())
+                                }
+                            }
+                            .pointerInput(index, isCardEnabled) {
+                                if (!isCardEnabled) return@pointerInput
+                                detectDragGestures(
+                                    onDragStart = {
+                                        draggingIndex = index
+                                        dragOffset = Offset.Zero
+                                        if (index !in selectedIndices) {
+                                            onCardClick(index)
+                                        }
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        dragOffset += dragAmount
+                                        val rootPos = cardPositions[index] ?: Offset.Zero
+                                        val globalPos = rootPos + dragOffset
+                                        if (dragOffset.y < -30f) {
+                                            onCardDragHover?.invoke(index, globalPos)
+                                        }
+                                    },
+                                    onDragEnd = {
+                                        val finalOffset = dragOffset
+                                        val wasDragging = draggingIndex == index
+                                        val rootPos = cardPositions[index] ?: Offset.Zero
+                                        val finalGlobal = rootPos + finalOffset
+                                        draggingIndex = null
+                                        dragOffset = Offset.Zero
+
+                                        if (wasDragging) {
+                                            if (finalOffset.y < -50f) {
+                                                onCardDrop?.invoke(index, finalGlobal)
+                                            } else if (abs(finalOffset.x) > 24f && onReorderHand != null) {
+                                                val shift = (finalOffset.x / step.toPx()).roundToInt()
+                                                val target = (index + shift).coerceIn(0, totalCards - 1)
+                                                if (target != index) {
+                                                    if (vibrationEnabled) {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                                    }
+                                                    onReorderHand(index, target)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        draggingIndex = null
+                                        dragOffset = Offset.Zero
+                                    }
+                                )
+                            }
                     ) {
                         HandCardView(
                             card = card,
@@ -177,7 +258,13 @@ fun HandView(
                                     } else Modifier
                                 )
                                 .graphicsLayer {
-                                    rotationZ = fromMiddle * 2.6f
+                                    if (isDraggingThis) {
+                                        scaleX = 1.12f
+                                        scaleY = 1.12f
+                                        rotationZ = 0f
+                                    } else {
+                                        rotationZ = fromMiddle * 2.6f
+                                    }
                                     transformOrigin = TransformOrigin(0.5f, 1f)
                                 }
                         )

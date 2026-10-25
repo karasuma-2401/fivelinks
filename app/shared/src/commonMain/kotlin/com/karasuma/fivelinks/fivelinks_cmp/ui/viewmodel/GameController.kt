@@ -15,6 +15,8 @@ interface GameController {
 
     fun swapDeadCard(index: Int)
 
+    fun reorderHand(fromIndex: Int, toIndex: Int) = Unit
+
     /** Offline: deal a new game. Online: ask the opponent for a rematch. */
     fun startNewGame()
 

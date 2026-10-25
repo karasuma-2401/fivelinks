@@ -31,15 +31,16 @@ class OnlineGameController(
     private data class Picked(val turn: Int, val selection: CardSelection)
 
     private val picked = MutableStateFlow<Picked?>(null)
+    private val customHandOrder = MutableStateFlow<List<com.karasuma.fivelinks.fivelinks_cmp.domain.Card>?>(null)
 
-    override val uiState: StateFlow<GameUiState> = combine(session.state, picked) { online, picked ->
-        online.toUiState(picked)
+    override val uiState: StateFlow<GameUiState> = combine(session.state, picked, customHandOrder) { online, picked, customOrder ->
+        online.toUiState(picked, customOrder)
     }
         .filterNotNull()
         .stateIn(
             scope,
             SharingStarted.Eagerly,
-            checkNotNull(session.state.value.toUiState(null)) { "The session has no game to show" },
+            checkNotNull(session.state.value.toUiState(null, null)) { "The session has no game to show" },
         )
 
     override fun onCardClick(index: Int) {
@@ -69,6 +70,18 @@ class OnlineGameController(
         play(Move.SwapDeadCard(game.view.viewerId, card))
     }
 
+    override fun reorderHand(fromIndex: Int, toIndex: Int) {
+        val game = session.state.value.game ?: return
+        val myId = game.view.viewerId
+        val currentCards = (customHandOrder.value ?: game.state.hands[myId]?.cards ?: emptyList()).toMutableList()
+        if (fromIndex in currentCards.indices && toIndex in currentCards.indices && fromIndex != toIndex) {
+            val moved = currentCards.removeAt(fromIndex)
+            currentCards.add(toIndex, moved)
+            customHandOrder.value = currentCards
+            picked.value = null
+        }
+    }
+
     /** Online there is no restart: this asks the opponent for a rematch. */
     override fun startNewGame() = session.requestRematch()
 
@@ -91,12 +104,21 @@ class OnlineGameController(
 
     private fun me(game: OnlineGame): Player = game.view.players.first { it.id == game.view.viewerId }
 
-    private fun OnlineState.toUiState(picked: Picked?): GameUiState? {
+    private fun OnlineState.toUiState(picked: Picked?, customOrder: List<com.karasuma.fivelinks.fivelinks_cmp.domain.Card>?): GameUiState? {
         val game = game ?: return null
+        val myId = game.view.viewerId
+        val baseHand = game.state.hands[myId]?.cards ?: emptyList()
+        val effectiveState = if (customOrder != null && customOrder.size == baseHand.size && customOrder.containsAll(baseHand)) {
+            val newHands = game.state.hands.toMutableMap()
+            newHands[myId] = com.karasuma.fivelinks.fivelinks_cmp.domain.Hand(customOrder)
+            game.state.copy(hands = newHands)
+        } else {
+            game.state
+        }
         val selection = picked?.takeIf { it.turn == game.view.turnNumber && game.isMyTurn }?.selection
             ?: CardSelection()
         return GameUiState(
-            gameState = game.state,
+            gameState = effectiveState,
             selectedCardIndices = selection.indices,
             activeTacticalAction = selection.tacticalAction,
             validPlacementPositions = selection.placements,

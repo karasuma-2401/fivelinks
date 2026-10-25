@@ -46,7 +46,8 @@ fun BoardCell(
     cellSize: Dp,
     pulse: State<Float>,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isHoveredDrop: Boolean = false
 ) {
     val colors = FiveLinksTheme.colors
     val background = if (isCorner || card == null) colors.cornerCell else card.suit.cardBackground()
@@ -88,6 +89,17 @@ fun BoardCell(
             .drawWithContent {
                 drawContent()
                 when {
+                    isHoveredDrop -> {
+                        drawCircle(
+                            color = Color.White,
+                            radius = size.minDimension * 0.46f,
+                            style = Stroke(width = size.minDimension * 0.12f)
+                        )
+                        drawCircle(
+                            color = if (isValidSnipeTarget) Color(0xFFD32F2F).copy(alpha = 0.5f) else Color(0xFF2E7D32).copy(alpha = 0.5f),
+                            radius = size.minDimension * 0.40f
+                        )
+                    }
                     isValidPlacement -> drawPlacementGlow(pulse.value)
                     isValidSnipeTarget -> drawCrosshair(pulse.value)
                 }

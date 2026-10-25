@@ -124,6 +124,22 @@ class GameViewModel(
         }
     }
 
+    override fun reorderHand(fromIndex: Int, toIndex: Int) {
+        val current = _uiState.value
+        val currentPlayer = current.gameState.currentPlayer
+        if (currentPlayer.isAi) return
+        val currentHand = current.gameState.handOf(currentPlayer).cards.toMutableList()
+        if (fromIndex in currentHand.indices && toIndex in currentHand.indices && fromIndex != toIndex) {
+            val moved = currentHand.removeAt(fromIndex)
+            currentHand.add(toIndex, moved)
+            val newHands = current.gameState.hands.toMutableMap()
+            newHands[currentPlayer.id] = com.karasuma.fivelinks.fivelinks_cmp.domain.Hand(currentHand)
+            val updatedState = current.gameState.copy(hands = newHands)
+            _uiState.update { it.copy(gameState = updatedState, selectedCardIndices = emptySet(), activeTacticalAction = null, validPlacementPositions = emptySet(), validSnipePositions = emptySet()) }
+            onStateChanged?.invoke(updatedState)
+        }
+    }
+
     override fun onCellClick(position: BoardPosition) {
         val current = _uiState.value
         if (current.isAiThinking || current.isPassingTurn || current.isGameOver) return

@@ -30,6 +30,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -38,6 +43,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import com.karasuma.fivelinks.fivelinks_cmp.PlatformBackHandler
+import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalVibrationEnabled
+import com.karasuma.fivelinks.fivelinks_cmp.domain.BoardPosition
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.BoardGrid
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.GameHeader
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.GameNotice
@@ -71,6 +78,10 @@ fun GameScreen(
     var pendingConfirm by remember { mutableStateOf<PendingConfirm?>(null) }
     var notice by remember(controller) { mutableStateOf<GameNotice?>(null) }
     var noticeShownAt by remember { mutableStateOf(TimeSource.Monotonic.markNow()) }
+    var boardBounds by remember { mutableStateOf(Rect.Zero) }
+    var hoveredDropPosition by remember { mutableStateOf<BoardPosition?>(null) }
+    val haptic = LocalHapticFeedback.current
+    val vibrationEnabled = LocalVibrationEnabled.current
 
     // Match clock: ticks only while the game is live and the app is in the foreground.
     var elapsedSeconds by remember(controller) { mutableIntStateOf(0) }
@@ -179,13 +190,19 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1.35f)
                                 .fillMaxHeight()
-                                .padding(end = 12.dp),
+                                .padding(end = 12.dp)
+                                .onGloballyPositioned { coordinates ->
+                                    val pos = coordinates.positionInRoot()
+                                    val size = coordinates.size
+                                    boardBounds = Rect(pos.x, pos.y, pos.x + size.width, pos.y + size.height)
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             BoardGrid(
                                 gameState = gameState,
                                 validPlacementPositions = uiState.validPlacementPositions,
                                 validSnipePositions = uiState.validSnipePositions,
+                                hoveredPosition = hoveredDropPosition,
                                 onCellClick = { pos -> controller.onCellClick(pos) }
                             )
                             GameNoticeBanner(
@@ -232,7 +249,34 @@ fun GameScreen(
                                 gameState = gameState,
                                 isInteractive = isPlayerTurn,
                                 onCardClick = { index -> controller.onCardClick(index) },
-                                onSwapDeadCard = { index -> controller.swapDeadCard(index) }
+                                onSwapDeadCard = { index -> controller.swapDeadCard(index) },
+                                onReorderHand = { from, to -> controller.reorderHand(from, to) },
+                                onCardDragHover = { _, globalOffset ->
+                                    if (boardBounds.contains(globalOffset) && boardBounds.width > 0f) {
+                                        val cellW = boardBounds.width / 10f
+                                        val cellH = boardBounds.height / 10f
+                                        val col = ((globalOffset.x - boardBounds.left) / cellW).toInt().coerceIn(0, 9)
+                                        val row = ((globalOffset.y - boardBounds.top) / cellH).toInt().coerceIn(0, 9)
+                                        val target = BoardPosition(row, col)
+                                        if (target in uiState.validPlacementPositions || target in uiState.validSnipePositions) {
+                                            if (hoveredDropPosition != target && vibrationEnabled) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                            }
+                                            hoveredDropPosition = target
+                                        } else {
+                                            hoveredDropPosition = null
+                                        }
+                                    } else {
+                                        hoveredDropPosition = null
+                                    }
+                                },
+                                onCardDrop = { _, _ ->
+                                    val target = hoveredDropPosition
+                                    hoveredDropPosition = null
+                                    if (target != null) {
+                                        controller.onCellClick(target)
+                                    }
+                                }
                             )
                         }
                     }
@@ -258,13 +302,19 @@ fun GameScreen(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .onGloballyPositioned { coordinates ->
+                                val pos = coordinates.positionInRoot()
+                                val size = coordinates.size
+                                boardBounds = Rect(pos.x, pos.y, pos.x + size.width, pos.y + size.height)
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         BoardGrid(
                             gameState = gameState,
                             validPlacementPositions = uiState.validPlacementPositions,
                             validSnipePositions = uiState.validSnipePositions,
+                            hoveredPosition = hoveredDropPosition,
                             onCellClick = { pos -> controller.onCellClick(pos) }
                         )
                         GameNoticeBanner(
@@ -303,7 +353,34 @@ fun GameScreen(
                         gameState = gameState,
                         isInteractive = isPlayerTurn,
                         onCardClick = { index -> controller.onCardClick(index) },
-                        onSwapDeadCard = { index -> controller.swapDeadCard(index) }
+                        onSwapDeadCard = { index -> controller.swapDeadCard(index) },
+                        onReorderHand = { from, to -> controller.reorderHand(from, to) },
+                        onCardDragHover = { _, globalOffset ->
+                            if (boardBounds.contains(globalOffset) && boardBounds.width > 0f) {
+                                val cellW = boardBounds.width / 10f
+                                val cellH = boardBounds.height / 10f
+                                val col = ((globalOffset.x - boardBounds.left) / cellW).toInt().coerceIn(0, 9)
+                                val row = ((globalOffset.y - boardBounds.top) / cellH).toInt().coerceIn(0, 9)
+                                val target = BoardPosition(row, col)
+                                if (target in uiState.validPlacementPositions || target in uiState.validSnipePositions) {
+                                    if (hoveredDropPosition != target && vibrationEnabled) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                    }
+                                    hoveredDropPosition = target
+                                } else {
+                                    hoveredDropPosition = null
+                                }
+                            } else {
+                                hoveredDropPosition = null
+                            }
+                        },
+                        onCardDrop = { _, _ ->
+                            val target = hoveredDropPosition
+                            hoveredDropPosition = null
+                            if (target != null) {
+                                controller.onCellClick(target)
+                            }
+                        }
                     )
                 }
             }

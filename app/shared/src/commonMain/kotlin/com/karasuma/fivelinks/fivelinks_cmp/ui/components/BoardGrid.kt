@@ -92,7 +92,8 @@ fun BoardGrid(
     onCellClick: (BoardPosition) -> Unit,
     modifier: Modifier = Modifier,
     guidedPosition: BoardPosition? = null,
-    guidedLabel: String? = null
+    guidedLabel: String? = null,
+    hoveredPosition: BoardPosition? = null
 ) {
     val lastMovePos: BoardPosition? = when (val lm = gameState.lastMove) {
         is Move.Place -> lm.position
@@ -272,6 +273,7 @@ fun BoardGrid(
                                 isLastMove = pos == lastMovePos,
                                 cellSize = cellSize,
                                 pulse = pulse,
+                                isHoveredDrop = pos == hoveredPosition,
                                 onClick = {
                                     if (isValidPlacement || isValidSnipe) {
                                         if (vibrationEnabled) {
