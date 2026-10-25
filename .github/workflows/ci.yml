@@ -32,6 +32,9 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
       - name: Run Test Suites
         run: ./gradlew :core:jvmTest :app:shared:jvmTest :server:test --no-daemon --console=plain
 
@@ -64,6 +67,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
       - name: Build Desktop and Server Distributions
         run: ./gradlew :app:desktopApp:jar :server:installDist --no-daemon --console=plain
 
@@ -91,6 +97,9 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
       - name: Assemble Android Debug APK
         run: ./gradlew :app:androidApp:assembleDebug --no-daemon --console=plain

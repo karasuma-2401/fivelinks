@@ -2,12 +2,7 @@
 FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /app
-COPY gradlew gradlew.bat settings.gradle.kts gradle.properties /app/
-COPY gradle /app/gradle
-COPY build.gradle.kts /app/
-COPY core /app/core
-COPY server /app/server
-COPY libs.versions.toml /app/gradle/libs.versions.toml
+COPY . /app
 
 RUN chmod +x ./gradlew && ./gradlew :server:installDist --no-daemon --console=plain
 
