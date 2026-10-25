@@ -37,6 +37,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.game.GameScreen
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.MenuScreen
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.MenuSettings
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.online.OnlineLobbyScreen
+import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.tutorial.TutorialScreen
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameController
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameViewModel
@@ -45,7 +46,8 @@ import kotlinx.coroutines.launch
 enum class AppScreen {
     MENU,
     ONLINE_LOBBY,
-    GAME
+    GAME,
+    TUTORIAL
 }
 
 /**
@@ -84,7 +86,9 @@ fun App(
             LocalSoundEnabled provides soundEnabled,
             LocalVibrationEnabled provides vibrationEnabled
         ) {
-            var currentScreen by remember { mutableStateOf(AppScreen.MENU) }
+            var currentScreen by remember {
+                mutableStateOf(if (!hasCompletedOnboarding) AppScreen.TUTORIAL else AppScreen.MENU)
+            }
             var activeController by remember { mutableStateOf<GameController?>(null) }
             var onlineSession by remember { mutableStateOf<OnlineSession?>(null) }
             var onlineProfile by remember { mutableStateOf(onlineProfileStore.load()) }
@@ -213,11 +217,7 @@ fun App(
                                     vibrationEnabled = enabled
                                     offlineStorage.savePreferences(offlineStorage.loadPreferences().copy(vibrationEnabled = enabled))
                                 },
-                                showOnboardingInitially = !hasCompletedOnboarding,
-                                onOnboardingComplete = {
-                                    hasCompletedOnboarding = true
-                                    offlineStorage.savePreferences(offlineStorage.loadPreferences().copy(hasCompletedOnboarding = true))
-                                }
+                                onStartTutorial = { currentScreen = AppScreen.TUTORIAL }
                             )
                         }
 
@@ -272,6 +272,14 @@ fun App(
                                 )
                             }
                         }
+
+                        AppScreen.TUTORIAL -> TutorialScreen(
+                            onFinishTutorial = {
+                                hasCompletedOnboarding = true
+                                offlineStorage.savePreferences(offlineStorage.loadPreferences().copy(hasCompletedOnboarding = true))
+                                currentScreen = AppScreen.MENU
+                            }
+                        )
                     }
                 }
             }

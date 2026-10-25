@@ -71,7 +71,6 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIcon
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIconView
-import com.karasuma.fivelinks.fivelinks_cmp.ui.components.OnboardingDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.PlayingCardFace
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.RulesDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.components.SegmentedSelector
@@ -116,11 +115,9 @@ fun MenuScreen(
     onToggleSound: (Boolean) -> Unit = {},
     vibrationEnabled: Boolean = true,
     onToggleVibration: (Boolean) -> Unit = {},
-    showOnboardingInitially: Boolean = false,
-    onOnboardingComplete: () -> Unit = {},
+    onStartTutorial: () -> Unit = {},
 ) {
     var showRules by remember { mutableStateOf(false) }
-    var showOnboarding by remember { mutableStateOf(showOnboardingInitially) }
     val difficulties = Difficulty.entries
 
     Box(
@@ -231,8 +228,8 @@ fun MenuScreen(
                 PanelDivider()
                 SettingToggle(
                     icon = LineIcon.Chip,
-                    title = "Rung phản hồi",
-                    subtitle = "Rung khi đặt quân, bắn tỉa và Thiên Phạt",
+                    title = "Rung",
+                    subtitle = "Rung khi đặt quân",
                     checked = vibrationEnabled,
                     onCheckedChange = onToggleVibration
                 )
@@ -280,7 +277,7 @@ fun MenuScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(
-                    onClick = { showOnboarding = true },
+                    onClick = onStartTutorial,
                     modifier = Modifier.height(44.dp)
                 ) {
                     LineIconView(
@@ -321,18 +318,6 @@ fun MenuScreen(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        if (showOnboarding) {
-            OnboardingDialog(
-                onDismiss = {
-                    showOnboarding = false
-                    onOnboardingComplete()
-                },
-                onComplete = {
-                    showOnboarding = false
-                    onOnboardingComplete()
-                }
-            )
-        }
 
         if (showRules) {
             RulesDialog(onDismiss = { showRules = false })

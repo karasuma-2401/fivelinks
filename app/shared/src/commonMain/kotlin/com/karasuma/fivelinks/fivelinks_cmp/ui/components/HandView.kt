@@ -1,7 +1,13 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -21,9 +27,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -58,7 +66,10 @@ fun HandView(
     isInteractive: Boolean,
     onCardClick: (Int) -> Unit,
     onSwapDeadCard: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabledIndices: Set<Int>? = null,
+    guidedIndices: Set<Int>? = null,
+    guideLabel: String? = null
 ) {
     fun isCardDead(card: Card): Boolean {
         if (card.isJack()) return false
@@ -73,6 +84,16 @@ fun HandView(
     val handAlpha by animateFloatAsState(if (isInteractive) 1f else 0.6f)
     val haptic = LocalHapticFeedback.current
     val vibrationEnabled = LocalVibrationEnabled.current
+
+    val infiniteTransition = rememberInfiniteTransition()
+    val bounceOffset by infiniteTransition.animateFloat(
+        initialValue = -8f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
 
     Column(
         modifier = modifier
@@ -120,28 +141,68 @@ fun HandView(
 
                 hand.cards.forEachIndexed { index, card ->
                     val isSelected = index in selectedIndices
+                    val isCardEnabled = isInteractive && (enabledIndices == null || index in enabledIndices)
+                    val isGuided = guidedIndices != null && index in guidedIndices && !isSelected
+                    val cardAlpha = if (enabledIndices != null && index !in enabledIndices) 0.35f else 1f
                     val fromMiddle = index - middle
-                    HandCardView(
-                        card = card,
-                        isSelected = isSelected,
-                        isDead = isCardDead(card),
-                        isCraftHighlight = isSelected && selectedIndices.size >= 2,
-                        enabled = isInteractive,
-                        onClick = {
-                            if (vibrationEnabled) {
-                                haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                            }
-                            onCardClick(index)
-                        },
+
+                    Box(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .offset(x = startX + step * index, y = (fromMiddle * fromMiddle * 1.4f).dp - 10.dp)
-                            .zIndex(if (isSelected) 50f else index.toFloat())
-                            .graphicsLayer {
-                                rotationZ = fromMiddle * 2.6f
-                                transformOrigin = TransformOrigin(0.5f, 1f)
+                            .zIndex(if (isSelected) 50f else if (isGuided) 45f else index.toFloat())
+                    ) {
+                        HandCardView(
+                            card = card,
+                            isSelected = isSelected,
+                            isDead = isCardDead(card),
+                            isCraftHighlight = isSelected && selectedIndices.size >= 2,
+                            enabled = isCardEnabled,
+                            onClick = {
+                                if (vibrationEnabled) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                }
+                                onCardClick(index)
+                            },
+                            modifier = Modifier
+                                .alpha(cardAlpha)
+                                .graphicsLayer {
+                                    rotationZ = fromMiddle * 2.6f
+                                    transformOrigin = TransformOrigin(0.5f, 1f)
+                                }
+                        )
+
+                        if (isGuided) {
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .offset(y = (-34).dp + bounceOffset.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = BrandRed,
+                                    shadowElevation = 8.dp
+                                ) {
+                                    Text(
+                                        text = guideLabel ?: "CHỌN",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = PureWhite,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
+                                Text(
+                                    text = "▼",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = BrandRed,
+                                    modifier = Modifier.offset(y = (-3).dp)
+                                )
                             }
-                    )
+                        }
+                    }
                 }
             }
         }

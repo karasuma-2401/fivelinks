@@ -18,3 +18,4 @@ services:
         value: "500"
       - key: MAX_SESSIONS
         value: "2000"
+

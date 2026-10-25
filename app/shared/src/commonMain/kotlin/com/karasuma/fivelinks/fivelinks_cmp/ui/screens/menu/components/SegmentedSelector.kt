@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -41,7 +42,8 @@ fun SegmentedSelector(
     options: List<String>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fontSize: TextUnit = if (options.size >= 3) 11.5.sp else 13.sp,
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -87,12 +89,12 @@ fun SegmentedSelector(
                 ) {
                     Text(
                         text = label,
-                        fontSize = 13.sp,
+                        fontSize = fontSize,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                         color = textColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                        modifier = Modifier.padding(horizontal = 2.dp)
                     )
                 }
             }

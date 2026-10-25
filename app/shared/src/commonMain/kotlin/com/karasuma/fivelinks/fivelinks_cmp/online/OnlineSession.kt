@@ -149,6 +149,7 @@ class OnlineSession(
     suspend fun leaveRoomAndClose() {
         if (_state.value.room != null) {
             connection.send { ClientMessage.LeaveRoom(it) }
+            kotlinx.coroutines.delay(60)
         }
         close()
     }

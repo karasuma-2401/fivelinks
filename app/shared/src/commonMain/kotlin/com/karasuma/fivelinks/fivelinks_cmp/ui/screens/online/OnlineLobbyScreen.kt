@@ -171,7 +171,7 @@ private fun ConnectedLobby(
         Spacer(Modifier.height(16.dp))
 
         when {
-            room != null -> RoomPanel(room, busy, onExit)
+            room != null -> RoomPanel(room, busy, onCancelRoom = { session.leaveRoom() })
             connection is ConnectionState.Connected -> RoomPicker(session, busy)
             else -> ReconnectingPanel(connection)
         }
@@ -268,7 +268,7 @@ private fun RoomPicker(session: OnlineSession, busy: Boolean) {
 }
 
 @Composable
-private fun RoomPanel(room: OnlineRoom, busy: Boolean, onExit: () -> Unit) {
+private fun RoomPanel(room: OnlineRoom, busy: Boolean, onCancelRoom: () -> Unit) {
     LobbyCard {
         when (room.status) {
             RoomStatus.WAITING -> {
@@ -335,7 +335,7 @@ private fun RoomPanel(room: OnlineRoom, busy: Boolean, onExit: () -> Unit) {
         if (room.status == RoomStatus.WAITING) {
             Spacer(Modifier.height(12.dp))
             TextButton(
-                onClick = onExit,
+                onClick = onCancelRoom,
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) {

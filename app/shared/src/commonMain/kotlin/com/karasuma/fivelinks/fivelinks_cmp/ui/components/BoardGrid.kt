@@ -23,13 +23,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.zIndex
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +69,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Move
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.rememberImpactHaptics
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandDark
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldGlow
@@ -84,7 +90,9 @@ fun BoardGrid(
     validPlacementPositions: Set<BoardPosition>,
     validSnipePositions: Set<BoardPosition>,
     onCellClick: (BoardPosition) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    guidedPosition: BoardPosition? = null,
+    guidedLabel: String? = null
 ) {
     val lastMovePos: BoardPosition? = when (val lm = gameState.lastMove) {
         is Move.Place -> lm.position
@@ -283,6 +291,73 @@ fun BoardGrid(
                 sequences = gameState.completedSequence,
                 modifier = Modifier.matchParentSize()
             )
+
+            if (guidedPosition != null) {
+                val r = guidedPosition.row
+                val c = guidedPosition.column
+                val cellCenterX = cellSize * c + cellSize / 2
+                val boardBounce by rememberInfiniteTransition().animateFloat(
+                    initialValue = -5f,
+                    targetValue = 5f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    )
+                )
+                val badgeColor = if (guidedPosition in validSnipePositions) BrandRed else Color(0xFF1976D2)
+                val isTopRow = r <= 1
+                val badgeX = (cellCenterX - 45.dp).coerceIn(4.dp, boardDim - 94.dp)
+                val badgeY = if (isTopRow) {
+                    cellSize * (r + 1) + 2.dp + boardBounce.dp
+                } else {
+                    cellSize * r - 36.dp + boardBounce.dp
+                }
+
+                Box(
+                    modifier = Modifier
+                        .offset(x = badgeX, y = badgeY)
+                        .zIndex(100f)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.width(90.dp)
+                    ) {
+                        if (isTopRow) {
+                            Text(
+                                text = "▲",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = badgeColor,
+                                modifier = Modifier.offset(y = 2.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = badgeColor,
+                            shadowElevation = 8.dp
+                        ) {
+                            Text(
+                                text = guidedLabel ?: "ĐẶT VÀO ĐÂY",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                color = PureWhite,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                letterSpacing = 0.4.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        if (!isTopRow) {
+                            Text(
+                                text = "▼",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = badgeColor,
+                                modifier = Modifier.offset(y = (-3).dp)
+                            )
+                        }
+                    }
+                }
+            }
 
             // Thiên Phạt: each chip swells and fades, rippling out from the centre.
             // (Sniped chips shatter instead; they are drawn on the canvas below.)

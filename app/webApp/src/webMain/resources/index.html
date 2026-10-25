@@ -1,22 +1,25 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#293130">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#293130" />
     <!-- Local development default. Replace with wss://…/ws when publishing this site. -->
-    <meta name="fivelinks-server-url" content="ws://localhost:8080/ws">
+    <meta
+      name="fivelinks-server-url"
+      content="wss://fivelinks-server.onrender.com/ws"
+    />
     <title>FiveLink</title>
-    <link rel="icon" type="image/png" href="favicon.png">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link type="text/css" rel="stylesheet" href="styles.css">
-</head>
-<body>
-<!-- Shown while the app loads; Compose takes over the page once it starts. -->
-<div class="splash" role="presentation">
-    <img src="splash-icon.png" alt="" width="97" height="134">
-    <div class="spinner"></div>
-</div>
-<script type="application/javascript" src="webApp.js"></script>
-</body>
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link type="text/css" rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Shown while the app loads; Compose takes over the page once it starts. -->
+    <div class="splash" role="presentation">
+      <img src="splash-icon.png" alt="" width="97" height="134" />
+      <div class="spinner"></div>
+    </div>
+    <script type="application/javascript" src="webApp.js"></script>
+  </body>
 </html>
