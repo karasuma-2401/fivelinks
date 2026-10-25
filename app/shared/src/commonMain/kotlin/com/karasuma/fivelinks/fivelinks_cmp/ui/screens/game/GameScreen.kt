@@ -190,12 +190,7 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1.35f)
                                 .fillMaxHeight()
-                                .padding(end = 12.dp)
-                                .onGloballyPositioned { coordinates ->
-                                    val pos = coordinates.positionInRoot()
-                                    val size = coordinates.size
-                                    boardBounds = Rect(pos.x, pos.y, pos.x + size.width, pos.y + size.height)
-                                },
+                                .padding(end = 12.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             BoardGrid(
@@ -203,6 +198,7 @@ fun GameScreen(
                                 validPlacementPositions = uiState.validPlacementPositions,
                                 validSnipePositions = uiState.validSnipePositions,
                                 hoveredPosition = hoveredDropPosition,
+                                onBoardPositioned = { rect -> boardBounds = rect },
                                 onCellClick = { pos -> controller.onCellClick(pos) }
                             )
                             GameNoticeBanner(
@@ -270,8 +266,18 @@ fun GameScreen(
                                         hoveredDropPosition = null
                                     }
                                 },
-                                onCardDrop = { _, _ ->
-                                    val target = hoveredDropPosition
+                                onCardDrop = { _, globalOffset ->
+                                    var target = hoveredDropPosition
+                                    if (target == null && boardBounds.contains(globalOffset) && boardBounds.width > 0f) {
+                                        val cellW = boardBounds.width / 10f
+                                        val cellH = boardBounds.height / 10f
+                                        val col = ((globalOffset.x - boardBounds.left) / cellW).toInt().coerceIn(0, 9)
+                                        val row = ((globalOffset.y - boardBounds.top) / cellH).toInt().coerceIn(0, 9)
+                                        val candidate = BoardPosition(row, col)
+                                        if (candidate in uiState.validPlacementPositions || candidate in uiState.validSnipePositions) {
+                                            target = candidate
+                                        }
+                                    }
                                     hoveredDropPosition = null
                                     if (target != null) {
                                         controller.onCellClick(target)
@@ -302,12 +308,7 @@ fun GameScreen(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                            .onGloballyPositioned { coordinates ->
-                                val pos = coordinates.positionInRoot()
-                                val size = coordinates.size
-                                boardBounds = Rect(pos.x, pos.y, pos.x + size.width, pos.y + size.height)
-                            },
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         BoardGrid(
@@ -315,6 +316,7 @@ fun GameScreen(
                             validPlacementPositions = uiState.validPlacementPositions,
                             validSnipePositions = uiState.validSnipePositions,
                             hoveredPosition = hoveredDropPosition,
+                            onBoardPositioned = { rect -> boardBounds = rect },
                             onCellClick = { pos -> controller.onCellClick(pos) }
                         )
                         GameNoticeBanner(
@@ -374,8 +376,18 @@ fun GameScreen(
                                 hoveredDropPosition = null
                             }
                         },
-                        onCardDrop = { _, _ ->
-                            val target = hoveredDropPosition
+                        onCardDrop = { _, globalOffset ->
+                            var target = hoveredDropPosition
+                            if (target == null && boardBounds.contains(globalOffset) && boardBounds.width > 0f) {
+                                val cellW = boardBounds.width / 10f
+                                val cellH = boardBounds.height / 10f
+                                val col = ((globalOffset.x - boardBounds.left) / cellW).toInt().coerceIn(0, 9)
+                                val row = ((globalOffset.y - boardBounds.top) / cellH).toInt().coerceIn(0, 9)
+                                val candidate = BoardPosition(row, col)
+                                if (candidate in uiState.validPlacementPositions || candidate in uiState.validSnipePositions) {
+                                    target = candidate
+                                }
+                            }
                             hoveredDropPosition = null
                             if (target != null) {
                                 controller.onCellClick(target)

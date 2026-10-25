@@ -1,9 +1,7 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ui.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -115,7 +113,6 @@ fun LeaderboardDialog(
                     .fillMaxWidth()
                     .widthIn(max = 500.dp)
                     .heightIn(max = 700.dp)
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
             ) {
                 Column(
                     modifier = Modifier
@@ -174,9 +171,9 @@ fun LeaderboardDialog(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    AnimatedContent(
+                    Crossfade(
                         targetState = selectedTab,
-                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        animationSpec = tween(150),
                         modifier = Modifier.weight(1f)
                     ) { tab ->
                         when {

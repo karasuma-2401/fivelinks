@@ -113,6 +113,7 @@ fun HandView(
 
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    var touchInCard by remember { mutableStateOf(Offset.Zero) }
     var cardPositions by remember { mutableStateOf(mapOf<Int, Offset>()) }
 
     Column(
@@ -190,9 +191,10 @@ fun HandView(
                             .pointerInput(index, isCardEnabled) {
                                 if (!isCardEnabled) return@pointerInput
                                 detectDragGestures(
-                                    onDragStart = {
+                                    onDragStart = { offset ->
                                         draggingIndex = index
                                         dragOffset = Offset.Zero
+                                        touchInCard = offset
                                         if (index !in selectedIndices) {
                                             onCardClick(index)
                                         }
@@ -201,7 +203,7 @@ fun HandView(
                                         change.consume()
                                         dragOffset += dragAmount
                                         val rootPos = cardPositions[index] ?: Offset.Zero
-                                        val globalPos = rootPos + dragOffset
+                                        val globalPos = rootPos + dragOffset + touchInCard
                                         if (dragOffset.y < -30f) {
                                             onCardDragHover?.invoke(index, globalPos)
                                         }
@@ -210,7 +212,7 @@ fun HandView(
                                         val finalOffset = dragOffset
                                         val wasDragging = draggingIndex == index
                                         val rootPos = cardPositions[index] ?: Offset.Zero
-                                        val finalGlobal = rootPos + finalOffset
+                                        val finalGlobal = rootPos + finalOffset + touchInCard
                                         draggingIndex = null
                                         dragOffset = Offset.Zero
 

@@ -45,6 +45,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
@@ -93,7 +96,8 @@ fun BoardGrid(
     modifier: Modifier = Modifier,
     guidedPosition: BoardPosition? = null,
     guidedLabel: String? = null,
-    hoveredPosition: BoardPosition? = null
+    hoveredPosition: BoardPosition? = null,
+    onBoardPositioned: ((Rect) -> Unit)? = null
 ) {
     val lastMovePos: BoardPosition? = when (val lm = gameState.lastMove) {
         is Move.Place -> lm.position
@@ -249,7 +253,15 @@ fun BoardGrid(
                 )
                 .padding(framePadding)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned { coordinates ->
+                        val pos = coordinates.positionInRoot()
+                        val size = coordinates.size
+                        onBoardPositioned?.invoke(Rect(pos.x, pos.y, pos.x + size.width, pos.y + size.height))
+                    }
+            ) {
                 for (r in 0 until 10) {
                     Row(
                         modifier = Modifier
