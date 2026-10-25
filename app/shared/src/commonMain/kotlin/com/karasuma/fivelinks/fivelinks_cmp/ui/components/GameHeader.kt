@@ -25,7 +25,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.unit.TextUnit
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -66,10 +71,12 @@ fun GameHeader(
 ) {
     val currentPlayer = gameState.currentPlayer
     val humanCount = gameState.players.count { !it.isAi }
-    val title = when {
+    val isThinking = isAiThinking && currentPlayer.isAi
+    val titleKey = when {
+        isThinking -> "AI_THINKING"
         viewerId != null && currentPlayer.id == viewerId -> "LƯỢT CỦA BẠN"
         viewerId != null -> "LƯỢT CỦA ${currentPlayer.name.uppercase()}"
-        currentPlayer.isAi -> if (isAiThinking) "AI ĐANG NGHĨ" else "LƯỢT CỦA AI"
+        currentPlayer.isAi -> "LƯỢT CỦA AI"
         humanCount == 1 -> "LƯỢT CỦA BẠN"
         else -> "LƯỢT ĐỘI ${currentPlayer.team.label()}"
     }
@@ -98,22 +105,41 @@ fun GameHeader(
             TurnDot(color = currentPlayer.team.primaryColor(), pulsing = isAiThinking)
             Spacer(modifier = Modifier.width(10.dp))
             AnimatedContent(
-                targetState = title,
+                targetState = titleKey,
                 transitionSpec = {
                     (fadeIn() + slideInVertically { it / 2 }) togetherWith
                         (fadeOut() + slideOutVertically { -it / 2 })
                 },
                 modifier = Modifier.weight(1f)
-            ) { text ->
-                Text(
-                    text = text,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            ) { key ->
+                if (key == "AI_THINKING") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Suy nghĩ",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        ThinkingAnimatedDots(
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontSize = 17.sp
+                        )
+                    }
+                } else {
+                    Text(
+                        text = key,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             HeaderIconButton(LineIcon.Help, "Luật chơi", onRulesClick)
             Spacer(modifier = Modifier.width(8.dp))
@@ -274,4 +300,28 @@ private fun HeaderIconButton(
             modifier = Modifier.size(20.dp)
         )
     }
+}
+
+@Composable
+fun ThinkingAnimatedDots(
+    color: Color = MaterialTheme.colorScheme.onBackground,
+    fontSize: TextUnit = 17.sp,
+    maxDots: Int = 4,
+    intervalMs: Long = 260L,
+    modifier: Modifier = Modifier
+) {
+    val dotCount by produceState(initialValue = 1) {
+        while (isActive) {
+            delay(intervalMs)
+            value = (value % maxDots) + 1
+        }
+    }
+    Text(
+        text = ".".repeat(dotCount),
+        fontSize = fontSize,
+        fontWeight = FontWeight.Black,
+        letterSpacing = 1.sp,
+        color = color,
+        modifier = modifier.widthIn(min = 28.dp)
+    )
 }

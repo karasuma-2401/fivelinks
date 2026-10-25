@@ -334,7 +334,7 @@ class GameViewModel(
     }
 
     private companion object {
-        const val AI_THINK_DELAY_MS = 450L
+        const val AI_THINK_DELAY_MS = 850L
         const val PASS_DELAY_MS = 1_000L
         const val AI_MOVE_FAILED = "AI chưa thể chọn nước đi. Bạn hãy chơi lại ván mới."
     }

@@ -4,6 +4,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,8 +20,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,7 +37,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -55,7 +64,9 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIcon
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.MessageBox
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.RulesDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.TacticalCraftingBar
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.ThinkingAnimatedDots
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.primaryColor
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameController
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.GameViewModel
 import kotlinx.coroutines.delay
@@ -205,6 +216,13 @@ fun GameScreen(
                                 notice = notice,
                                 modifier = Modifier.align(Alignment.TopCenter)
                             )
+                            AiThinkingOverlay(
+                                visible = uiState.isAiThinking && notice == null,
+                                teamColor = currentPlayer.team.primaryColor(),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .padding(top = 10.dp)
+                            )
                             if (uiState.opponentDisconnected) {
                                 val opponentName = gameState.players.firstOrNull { it.id != localPlayer?.id }?.name ?: "Đối thủ"
                                 Text(
@@ -322,6 +340,13 @@ fun GameScreen(
                         GameNoticeBanner(
                             notice = notice,
                             modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                        AiThinkingOverlay(
+                            visible = uiState.isAiThinking && notice == null,
+                            teamColor = currentPlayer.team.primaryColor(),
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 10.dp)
                         )
                         if (uiState.opponentDisconnected) {
                             val opponentName = gameState.players.firstOrNull { it.id != localPlayer?.id }?.name ?: "Đối thủ"
@@ -446,6 +471,51 @@ fun GameScreen(
                 onDismiss = { pendingConfirm = null }
             )
             null -> Unit
+        }
+    }
+}
+
+@Composable
+private fun AiThinkingOverlay(
+    visible: Boolean,
+    teamColor: Color,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + slideInVertically { -it / 2 },
+        exit = fadeOut() + slideOutVertically { -it / 2 },
+        modifier = modifier
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+            border = BorderStroke(1.2.dp, teamColor.copy(alpha = 0.5f)),
+            shadowElevation = 8.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(teamColor)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Suy nghĩ",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                ThinkingAnimatedDots(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 12.sp,
+                    intervalMs = 260L
+                )
+            }
         }
     }
 }

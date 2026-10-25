@@ -160,21 +160,21 @@ fun RulesDialog(
                                 tag = "GHÉP ĐÔI",
                                 tagIcon = LineIcon.Sparkle,
                                 tagColor = TeamBlue,
-                                title = "Ghép 2 lá cùng số (Ví dụ: 8♠ + 8♥)",
+                                title = "Ghép 2 lá cùng số",
                                 text = "Tạo Jack 2 Mắt nhân tạo: Bỏ 2 lá để đặt 1 quân vào ô trống bất kỳ và lập tức rút 2 lá mới."
                             )
                             RuleItem(
                                 tag = "ĐỒNG CHẤT",
                                 tagIcon = LineIcon.Crosshair,
                                 tagColor = BrandRed,
-                                title = "Ghép 2 lá liên tiếp cùng chất (Ví dụ: 6♥ + 7♥)",
+                                title = "Ghép 2 lá liên tiếp cùng chất",
                                 text = "Tạo Jack 1 Mắt nhân tạo: Bỏ 2 lá để bắn tỉa 1 quân đối thủ chưa khóa và lập tức rút 2 lá mới."
                             )
                             RuleItem(
                                 tag = "THIÊN PHẠT",
                                 tagIcon = LineIcon.Bolt,
                                 tagColor = GoldAccent,
-                                title = "Thiên Phạt Hoàng Kim (Sảnh 5 lá đồng chất trên tay)",
+                                title = "Thiên Phạt Hoàng Kim",
                                 text = "Chiêu thức tối thượng huyền thoại: Quét sạch toàn bộ quân cờ và tất cả chuỗi đã khóa của đối phương trên bàn đấu!"
                             )
                             RuleItem(
@@ -266,15 +266,18 @@ private fun RuleItem(
     tagIcon: LineIcon? = null,
     tagColor: Color = BrandRed
 ) {
+    val hasBadge = tag != null || tagIcon != null
     Row(verticalAlignment = Alignment.Top) {
-        Box(
-            modifier = Modifier
-                .padding(top = 5.dp)
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(tagColor)
-        )
-        Spacer(modifier = Modifier.width(10.dp))
+        if (!hasBadge) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 5.dp)
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(tagColor)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+        }
         Column(modifier = Modifier.fillMaxWidth()) {
             if (tag != null) {
                 Row(

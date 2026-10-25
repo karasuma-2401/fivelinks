@@ -2,8 +2,14 @@ package com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -35,7 +41,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -48,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -75,7 +81,6 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LeaderboardDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.PlayingCardFace
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.RulesDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.components.SegmentedSelector
-import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandDark
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.FiveLinksTheme
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
@@ -345,68 +350,159 @@ private fun ResumeMatchCard(
     onResume: () -> Unit,
     onDiscard: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(22.dp)
-    Column(
+    val cardShape = RoundedCornerShape(24.dp)
+    val isNight = FiveLinksTheme.colors.isNight
+    val cleanSummary = remember(summary) {
+        summary.replace("Độ khó: ", "AI ")
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "resumePulse")
+    val dotAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dotAlpha"
+    )
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .background(GoldAccent.copy(alpha = 0.12f))
-            .border(1.5.dp, GoldAccent.copy(alpha = 0.5f), shape)
-            .padding(16.dp)
+            .then(
+                if (isNight) {
+                    Modifier
+                } else {
+                    Modifier.shadow(
+                        elevation = 16.dp,
+                        shape = cardShape,
+                        ambientColor = Color.Black.copy(alpha = 0.08f),
+                        spotColor = Color.Black.copy(alpha = 0.12f)
+                    )
+                }
+            )
+            .clip(cardShape)
+            .background(MaterialTheme.colorScheme.surface)
+            .then(
+                if (isNight) {
+                    Modifier.border(1.dp, MaterialTheme.colorScheme.outline, cardShape)
+                } else {
+                    Modifier
+                }
+            )
+            .clickable(role = Role.Button, onClick = onResume)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        // Mini 2-card fan on the left
+        Box(
+            modifier = Modifier
+                .width(44.dp)
+                .height(48.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(GoldAccent),
-                contentAlignment = Alignment.Center
-            ) {
-                LineIconView(icon = LineIcon.ArrowRight, color = BrandDark, modifier = Modifier.size(18.dp))
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "VÁN ĐẤU ĐANG DỞ",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.5.sp,
-                    color = GoldAccent
-                )
-                Text(
-                    text = summary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
+            PlayingCardFace(
+                card = Card(Suit.SPADES, Rank.JACK),
+                width = 25.dp,
+                showJackRole = false,
+                modifier = Modifier.graphicsLayer {
+                    translationX = -6.dp.toPx()
+                    rotationZ = -9f
+                    shadowElevation = 4.dp.toPx()
+                    shape = RoundedCornerShape(4.dp)
+                }
+            )
+            PlayingCardFace(
+                card = Card(Suit.HEARTS, Rank.ACE),
+                width = 25.dp,
+                showJackRole = false,
+                modifier = Modifier.graphicsLayer {
+                    translationX = 6.dp.toPx()
+                    translationY = 2.dp.toPx()
+                    rotationZ = 9f
+                    shadowElevation = 6.dp.toPx()
+                    shape = RoundedCornerShape(4.dp)
+                }
+            )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.width(14.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        // Center info column
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(BrandRed)
+                        .alpha(dotAlpha)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "VÁN ĐẤU ĐANG DỞ",
+                    fontSize = 9.5.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.4.sp,
+                    color = BrandRed
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Tiếp tục ván đấu",
+                fontSize = 15.sp,
+                lineHeight = 19.sp,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(1.dp))
+            Text(
+                text = cleanSummary,
+                fontSize = 11.5.sp,
+                lineHeight = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // Discard button
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable(role = Role.Button, onClick = onDiscard),
+            contentAlignment = Alignment.Center
         ) {
-            OutlinedButton(
-                onClick = onDiscard,
-                shape = CircleShape,
-                modifier = Modifier.weight(0.4f).height(42.dp)
-            ) {
-                Text("BỎ QUA", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
-            }
+            LineIconView(
+                icon = LineIcon.Close,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(14.dp),
+                strokeWidth = 2.4f
+            )
+        }
 
-            Button(
-                onClick = onResume,
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BrandDark),
-                modifier = Modifier.weight(0.6f).height(42.dp)
-            ) {
-                Text("TIẾP TỤC CHƠI", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
-            }
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Resume action button
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(BrandRed)
+                .clickable(role = Role.Button, onClick = onResume),
+            contentAlignment = Alignment.Center
+        ) {
+            LineIconView(
+                icon = LineIcon.ArrowRight,
+                color = PureWhite,
+                modifier = Modifier.size(17.dp),
+                strokeWidth = 2.6f
+            )
         }
     }
 }

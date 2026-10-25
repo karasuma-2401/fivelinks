@@ -24,8 +24,9 @@ class WebOnlineProfileStore : OnlineProfileStore {
     override fun save(profile: OnlineProfile) {
         runCatching {
             window.localStorage.setItem(KEY_PLAYER_NAME, profile.playerName)
-            if (profile.sessionToken == null) window.localStorage.removeItem(KEY_SESSION_TOKEN)
-            else window.localStorage.setItem(KEY_SESSION_TOKEN, profile.sessionToken)
+            val token = profile.sessionToken
+            if (token == null) window.localStorage.removeItem(KEY_SESSION_TOKEN)
+            else window.localStorage.setItem(KEY_SESSION_TOKEN, token)
         }
     }
 
