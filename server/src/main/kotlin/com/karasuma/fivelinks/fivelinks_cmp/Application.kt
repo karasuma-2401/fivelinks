@@ -46,6 +46,7 @@ fun Application.module(
     gameServer: GameServer = GameServer(this, config),
     database: LeaderboardDatabase = LeaderboardDatabase(),
 ) {
+    gameServer.leaderboardDatabase = database
     install(ContentNegotiation) {
         json(ProtocolJson)
     }

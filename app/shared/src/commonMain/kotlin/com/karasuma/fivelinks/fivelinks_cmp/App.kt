@@ -23,7 +23,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.karasuma.fivelinks.fivelinks_cmp.ai.Difficulty
 import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalSoundEnabled
 import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalVibrationEnabled
+import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
+import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
+import com.karasuma.fivelinks.fivelinks_cmp.model.PlayerSyncRequest
 import com.karasuma.fivelinks.fivelinks_cmp.online.InMemoryOnlineProfileStore
+import com.karasuma.fivelinks.fivelinks_cmp.online.LeaderboardClient
 import com.karasuma.fivelinks.fivelinks_cmp.online.OnlineClient
 import com.karasuma.fivelinks.fivelinks_cmp.online.OnlineGameController
 import com.karasuma.fivelinks.fivelinks_cmp.online.OnlineProfile
@@ -94,8 +98,80 @@ fun App(
             var onlineProfile by remember { mutableStateOf(onlineProfileStore.load()) }
             val scope = rememberCoroutineScope()
             val lifecycle = LocalLifecycleOwner.current.lifecycle
+            val leaderboardClient = remember(onlineServerUrl) { LeaderboardClient(defaultHttpServerUrl = onlineServerUrl) }
+            val currentPlayerId = onlineProfile.sessionToken
+                ?: "guest_${onlineProfile.playerName.hashCode().toUInt().toString(16)}"
             val serverConfigurationError = remember(onlineServerUrl, requireSecureOnline) {
                 ServerConfig.validationError(onlineServerUrl, requireSecureOnline)
+            }
+
+            // Pre-warm the server (especially Render free tier) in the background on app launch
+            LaunchedEffect(onlineServerUrl) {
+                leaderboardClient.warmup(onlineServerUrl)
+            }
+
+            fun syncOfflineMatchResult(finalState: GameState, difficulty: Difficulty) {
+                if (finalState.players.none { it.isAi }) return
+                val humanTeam = finalState.players.firstOrNull { !it.isAi }?.team ?: Team.BLUE
+                val isWin = finalState.winner == humanTeam
+                val delta = when {
+                    finalState.winner == null -> 2
+                    isWin -> when (difficulty) {
+                        Difficulty.HARD -> 15
+                        Difficulty.MEDIUM -> 10
+                        Difficulty.EASY -> 5
+                    }
+                    else -> when (difficulty) {
+                        Difficulty.HARD -> -8
+                        Difficulty.MEDIUM -> -5
+                        Difficulty.EASY -> 0
+                    }
+                }
+                val seqCount = finalState.sequencesOf(humanTeam)
+                scope.launch {
+                    leaderboardClient.syncPlayerStats(
+                        PlayerSyncRequest(
+                            playerId = currentPlayerId,
+                            playerName = onlineProfile.playerName,
+                            ratingDelta = delta,
+                            isWin = isWin,
+                            sequencesCount = seqCount,
+                            snipesCount = 0
+                        )
+                    )
+                }
+            }
+
+            LaunchedEffect(onlineSession) {
+                val session = onlineSession ?: return@LaunchedEffect
+                var lastSyncedKey: String? = null
+                session.state.collect { onlineState ->
+                    val res = onlineState.result ?: return@collect
+                    val game = onlineState.game ?: return@collect
+                    val roomCode = onlineState.room?.code ?: ""
+                    val syncKey = "$roomCode:${game.view.turnNumber}:${res.winner}:${res.reason}"
+                    if (syncKey == lastSyncedKey) return@collect
+                    lastSyncedKey = syncKey
+
+                    val myTeam = game.view.players.firstOrNull { it.id == game.view.viewerId }?.team ?: return@collect
+                    val isWin = res.winner != null && res.winner == myTeam
+                    val delta = when {
+                        res.winner == null -> 5
+                        isWin -> 25
+                        else -> -15
+                    }
+                    val seqCount = game.state.sequencesOf(myTeam)
+                    leaderboardClient.syncPlayerStats(
+                        PlayerSyncRequest(
+                            playerId = currentPlayerId,
+                            playerName = onlineProfile.playerName,
+                            ratingDelta = delta,
+                            isWin = isWin,
+                            sequencesCount = seqCount,
+                            snipesCount = 0
+                        )
+                    )
+                }
             }
 
             // Keep a room resumable while the app is backgrounded. A process restart creates a new
@@ -144,6 +220,7 @@ fun App(
 
                             MenuScreen(
                                 onStartGame = { config, players, difficulty ->
+                                    var syncedTurn = -1
                                     val controller = GameViewModel(
                                         initialConfig = config,
                                         initialPlayers = players,
@@ -152,6 +229,10 @@ fun App(
                                             if (nextState.isGameOver) {
                                                 offlineStorage.clearSavedGame()
                                                 savedGame = null
+                                                if (syncedTurn != nextState.turnNumber) {
+                                                    syncedTurn = nextState.turnNumber
+                                                    syncOfflineMatchResult(nextState, difficulty)
+                                                }
                                             } else {
                                                 val toSave = SavedOfflineGame(gameState = nextState, aiDifficulty = difficulty)
                                                 offlineStorage.saveGame(toSave)
@@ -167,6 +248,7 @@ fun App(
                                 },
                                 onResumeGame = savedGame?.let { saved ->
                                     {
+                                        var syncedTurn = -1
                                         val controller = GameViewModel(
                                             initialConfig = saved.gameState.config,
                                             initialPlayers = saved.gameState.players,
@@ -176,6 +258,10 @@ fun App(
                                                 if (nextState.isGameOver) {
                                                     offlineStorage.clearSavedGame()
                                                     savedGame = null
+                                                    if (syncedTurn != nextState.turnNumber) {
+                                                        syncedTurn = nextState.turnNumber
+                                                        syncOfflineMatchResult(nextState, saved.aiDifficulty)
+                                                    }
                                                 } else {
                                                     val toSave = SavedOfflineGame(gameState = nextState, aiDifficulty = saved.aiDifficulty)
                                                     offlineStorage.saveGame(toSave)
@@ -218,8 +304,9 @@ fun App(
                                     offlineStorage.savePreferences(offlineStorage.loadPreferences().copy(vibrationEnabled = enabled))
                                 },
                                 onStartTutorial = { currentScreen = AppScreen.TUTORIAL },
-                                playerId = onlineProfile.sessionToken ?: "guest_${onlineProfile.playerName.hashCode().toUInt().toString(16)}",
+                                playerId = currentPlayerId,
                                 playerName = onlineProfile.playerName,
+                                serverUrl = onlineServerUrl,
                             )
                         }
 

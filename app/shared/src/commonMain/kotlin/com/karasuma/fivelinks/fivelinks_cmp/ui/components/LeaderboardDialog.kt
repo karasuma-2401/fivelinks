@@ -54,6 +54,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.model.LeaderboardResponse
 import com.karasuma.fivelinks.fivelinks_cmp.model.PlayerLeaderboardEntry
 import com.karasuma.fivelinks.fivelinks_cmp.model.RankTier
 import com.karasuma.fivelinks.fivelinks_cmp.online.LeaderboardClient
+import com.karasuma.fivelinks.fivelinks_cmp.online.ServerConfig
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.components.SegmentedSelector
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
@@ -65,6 +66,7 @@ import fivelinks_cmp.app.shared.generated.resources.rank_gold
 import fivelinks_cmp.app.shared.generated.resources.rank_grandmaster
 import fivelinks_cmp.app.shared.generated.resources.rank_platinum
 import fivelinks_cmp.app.shared.generated.resources.rank_silver
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -84,13 +86,25 @@ fun LeaderboardDialog(
     playerId: String,
     playerName: String,
     onDismiss: () -> Unit,
-    leaderboardClient: LeaderboardClient = remember { LeaderboardClient() }
+    serverUrl: String = ServerConfig.DEV_URL,
+    leaderboardClient: LeaderboardClient = remember(serverUrl) { LeaderboardClient(defaultHttpServerUrl = serverUrl) }
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var response by remember { mutableStateOf<LeaderboardResponse?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    var showColdStartHint by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(isLoading) {
+        if (isLoading) {
+            showColdStartHint = false
+            delay(2500)
+            if (isLoading) showColdStartHint = true
+        } else {
+            showColdStartHint = false
+        }
+    }
 
     fun loadData() {
         scope.launch {
@@ -198,15 +212,35 @@ fun LeaderboardDialog(
                     ) { tab ->
                         when {
                             isLoading -> {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
                                 ) {
                                     CircularProgressIndicator(
                                         color = GoldAccent,
                                         modifier = Modifier.size(36.dp),
                                         strokeWidth = 3.dp
                                     )
+                                    if (showColdStartHint) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "Đang đánh thức máy chủ đám mây...",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Lần kết nối đầu tiên có thể mất 20–40 giây",
+                                            fontSize = 11.5.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
                                 }
                             }
                             tab == 0 -> {

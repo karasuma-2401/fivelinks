@@ -8,6 +8,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.protocol.ServerMessage
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.request.get
 import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -36,6 +38,8 @@ import kotlin.time.TimeSource
  */
 object ServerConfig {
     const val DEV_URL = "ws://localhost:8080/ws"
+    const val CLOUD_WS_URL = "wss://fivelinks-server.onrender.com/ws"
+    const val CLOUD_HTTP_URL = "https://fivelinks-server.onrender.com"
 
     /** Returns a Vietnamese setup error instead of letting a bad release configuration retry forever. */
     fun validationError(url: String, requireSecure: Boolean = false): String? {
@@ -174,7 +178,15 @@ class OnlineClient(
     /** Runs one WebSocket session to its end; true when the server turned this app version away. */
     private suspend fun connectOnce(): Boolean {
         var updateRequired = false
-        httpClient.webSocket(url) {
+        val targetUrl = resolveTargetWsUrl()
+        if (targetUrl.startsWith("wss://")) {
+            // Wake sleeping cloud instances (e.g. Render free tier) over standard HTTP first,
+            // because edge proxies queue HTTP GET during cold boot better than WebSocket upgrades.
+            runCatching {
+                httpClient.get("${ServerConfig.httpBaseUrl(targetUrl)}/health/liveness")
+            }
+        }
+        httpClient.webSocket(targetUrl) {
             socket = this
             val session = this
             val heartbeat = scope.launch {
@@ -215,6 +227,18 @@ class OnlineClient(
             }
         }
         return updateRequired
+    }
+
+    private suspend fun resolveTargetWsUrl(): String {
+        val trimmed = url.trim()
+        if (trimmed != ServerConfig.DEV_URL) return trimmed
+        val localReachable = withTimeoutOrNull(2.seconds) {
+            runCatching {
+                httpClient.get("${ServerConfig.httpBaseUrl(trimmed)}/health/liveness")
+                true
+            }.getOrDefault(false)
+        } ?: false
+        return if (localReachable) trimmed else ServerConfig.CLOUD_WS_URL
     }
 
     private suspend fun DefaultClientWebSocketSession.sendMessage(message: ClientMessage): Boolean {

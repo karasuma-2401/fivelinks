@@ -1,0 +1,21 @@
+name: Render Keep-Alive Warmup
+
+on:
+  schedule:
+    # Ping every 14 minutes to prevent Render free-tier spin-down (15m idle timeout)
+    - cron: '*/14 * * * *'
+  workflow_dispatch:
+
+jobs:
+  warmup:
+    name: Ping Server Health
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Warm up Render Server
+        env:
+          RENDER_HEALTH_URL: ${{ vars.RENDER_HEALTH_URL || 'https://fivelinks-server.onrender.com/health/liveness' }}
+        run: |
+          echo "Pinging $RENDER_HEALTH_URL ..."
+          curl -fsSL --retry 2 --retry-delay 5 --max-time 60 "$RENDER_HEALTH_URL" || true
+

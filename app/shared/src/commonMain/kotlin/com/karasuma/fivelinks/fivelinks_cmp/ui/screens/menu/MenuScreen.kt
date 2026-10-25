@@ -75,6 +75,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Rank
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
+import com.karasuma.fivelinks.fivelinks_cmp.online.ServerConfig
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIcon
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIconView
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LeaderboardDialog
@@ -124,6 +125,7 @@ fun MenuScreen(
     onStartTutorial: () -> Unit = {},
     playerId: String = "guest_player",
     playerName: String = "Người chơi",
+    serverUrl: String = ServerConfig.DEV_URL,
 ) {
     var showRules by remember { mutableStateOf(false) }
     var showLeaderboard by remember { mutableStateOf(false) }
@@ -338,6 +340,7 @@ fun MenuScreen(
             LeaderboardDialog(
                 playerId = playerId,
                 playerName = playerName,
+                serverUrl = serverUrl,
                 onDismiss = { showLeaderboard = false }
             )
         }

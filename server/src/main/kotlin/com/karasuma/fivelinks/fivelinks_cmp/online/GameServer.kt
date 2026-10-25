@@ -1,10 +1,12 @@
 package com.karasuma.fivelinks.fivelinks_cmp.online
 
+import com.karasuma.fivelinks.fivelinks_cmp.database.LeaderboardDatabase
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameConfig
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Player
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
+import com.karasuma.fivelinks.fivelinks_cmp.model.PlayerSyncRequest
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ClientMessage
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ErrorCodes
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.FirstPlayer
@@ -51,6 +53,7 @@ class GameServer(
     val config: OnlineConfig = OnlineConfig(),
     private val timeSource: TimeSource.WithComparableMarks = TimeSource.Monotonic,
     private val random: Random = SecureRandom().asKotlinRandom(),
+    var leaderboardDatabase: LeaderboardDatabase? = null,
 ) {
     private val log = LoggerFactory.getLogger(GameServer::class.java)
     val metrics = ServerMetrics()
@@ -450,6 +453,7 @@ class GameServer(
         room.result = result
         for (seat in room.seats) seat.session.connection?.send(ServerMessage.GameOver(nextId(), result))
         broadcastRoomState(room)
+
         log.info("Room {} game {} over: {} ({})", room.code, room.gameNumber, result.winner ?: "draw", result.reason)
     }
 

@@ -28,3 +28,7 @@ keystore.properties
 
 # APKs handed out to testers
 /release/
+
+# Environment secrets (never commit)
+.env
+.env.*
