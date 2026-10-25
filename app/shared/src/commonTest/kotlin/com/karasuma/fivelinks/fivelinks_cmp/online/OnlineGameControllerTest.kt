@@ -116,4 +116,33 @@ class OnlineGameControllerTest {
         assertEquals(result, controller.uiState.value.gameResult)
         assertTrue(controller.uiState.value.canRestart)
     }
+
+    @Test
+    fun reorderingHand_updatesCardValueAtBothOldAndNewPositions() = runTest {
+        val dealt = dealOnlineGame()
+        val (_, controller) = controllerFor(dealt)
+        val originalHand = dealt.hands.getValue(ME).cards
+        // Find two distinct non-jack cards at different indices
+        val fromIdx = originalHand.indexOfFirst { !it.isJack() }
+        val toIdx = originalHand.indices.first { it != fromIdx && !originalHand[it].isJack() && originalHand[it] != originalHand[fromIdx] }
+        val movedCard = originalHand[fromIdx]
+
+        controller.reorderHand(fromIdx, toIdx)
+        runCurrent()
+
+        val reorderedHand = controller.uiState.value.gameState.hands.getValue(ME).cards
+        assertEquals(movedCard, reorderedHand[toIdx])
+        val newCardAtOldSlot = reorderedHand[fromIdx]
+
+        // Clicking the old slot (fromIdx) must select and play newCardAtOldSlot, NOT movedCard
+        controller.onCardClick(fromIdx)
+        runCurrent()
+        val target = dealt.board.positionsOf(newCardAtOldSlot).first()
+        assertTrue(target in controller.uiState.value.validPlacementPositions)
+
+        controller.onCellClick(target)
+        runCurrent()
+        val sent = connection.sent.single() as ClientMessage.SubmitMove
+        assertEquals(Move.Place(ME, newCardAtOldSlot, target), sent.move)
+    }
 }

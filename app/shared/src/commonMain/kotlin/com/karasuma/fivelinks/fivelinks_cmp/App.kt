@@ -39,6 +39,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.online.ServerConfig
 import com.karasuma.fivelinks.fivelinks_cmp.storage.InMemoryOfflineStorage
 import com.karasuma.fivelinks.fivelinks_cmp.storage.OfflineStorage
 import com.karasuma.fivelinks.fivelinks_cmp.storage.SavedOfflineGame
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.MessageBox
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.game.GameScreen
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.MenuScreen
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.MenuSettings
@@ -95,7 +96,10 @@ fun App(
             LocalVibrationEnabled provides vibrationEnabled
         ) {
             var currentScreen by remember {
-                mutableStateOf(if (!hasCompletedOnboarding) AppScreen.TUTORIAL else AppScreen.MENU)
+                mutableStateOf(AppScreen.MENU)
+            }
+            var showWelcomePrompt by remember {
+                mutableStateOf(!hasCompletedOnboarding)
             }
             var activeController by remember { mutableStateOf<GameController?>(null) }
             var onlineSession by remember { mutableStateOf<OnlineSession?>(null) }
@@ -322,11 +326,34 @@ fun App(
                                     vibrationEnabled = enabled
                                     offlineStorage.savePreferences(offlineStorage.loadPreferences().copy(vibrationEnabled = enabled))
                                 },
-                                onStartTutorial = { currentScreen = AppScreen.TUTORIAL },
+                                onStartTutorial = {
+                                    showWelcomePrompt = false
+                                    currentScreen = AppScreen.TUTORIAL
+                                },
                                 playerId = currentPlayerId,
                                 playerName = onlineProfile.playerName,
                                 serverUrl = onlineServerUrl,
                             )
+
+                            if (showWelcomePrompt) {
+                                MessageBox(
+                                    title = "Chào mừng đến với FiveLink!",
+                                    message = "Cờ bài chiến thuật kết hợp bài Tây & 5 quân liên tiếp. Bạn có muốn xem hướng dẫn nhanh (1 phút) để nắm cách đánh và ghép bài đặc biệt trước khi bắt đầu không?",
+                                    confirmText = "Hướng dẫn",
+                                    dismissText = "Bỏ qua",
+                                    onConfirm = {
+                                        showWelcomePrompt = false
+                                        currentScreen = AppScreen.TUTORIAL
+                                    },
+                                    onDismiss = {
+                                        showWelcomePrompt = false
+                                        hasCompletedOnboarding = true
+                                        offlineStorage.savePreferences(
+                                            offlineStorage.loadPreferences().copy(hasCompletedOnboarding = true)
+                                        )
+                                    }
+                                )
+                            }
                         }
 
                         AppScreen.ONLINE_LOBBY -> OnlineLobbyScreen(

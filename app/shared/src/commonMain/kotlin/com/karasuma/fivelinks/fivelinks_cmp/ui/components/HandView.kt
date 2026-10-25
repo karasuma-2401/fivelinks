@@ -129,6 +129,8 @@ fun HandView(
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     var touchInCard by remember { mutableStateOf(Offset.Zero) }
     var cardPositions by remember { mutableStateOf(mapOf<Int, Offset>()) }
+    var didReorderDuringDrag by remember { mutableStateOf(false) }
+    var autoSelectedIndex by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = modifier
@@ -197,13 +199,6 @@ fun HandView(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .offset(x = effectiveX, y = (fromMiddle * fromMiddle * 1.4f).dp - 10.dp)
-                            .offset {
-                                if (isDraggingThis) {
-                                    IntOffset(dragX.roundToInt(), dragY.roundToInt())
-                                } else {
-                                    IntOffset.Zero
-                                }
-                            }
                             .zIndex(if (isDraggingThis) 150f else if (isSelected) 50f else if (isGuided) 45f else index.toFloat())
                             .onGloballyPositioned { coordinates ->
                                 if (draggingIndex == null) {
@@ -217,47 +212,69 @@ fun HandView(
                                         draggingIndex = index
                                         dragOffset = Offset.Zero
                                         touchInCard = offset
-                                        // Keep selection active if already tapped; select if new!
-                                        if (index !in currentSelectedIndices) {
-                                            currentOnCardClick(index)
-                                        }
+                                        didReorderDuringDrag = false
+                                        autoSelectedIndex = null
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
                                         dragOffset += dragAmount
 
-                                        val curIdx = draggingIndex ?: index
+                                        var curIdx = draggingIndex ?: index
                                         val rootPos = cardPositions[curIdx] ?: cardPositions[index] ?: Offset.Zero
                                         val globalPos = rootPos + dragOffset + touchInCard
 
-                                        if (dragOffset.y < -30f) {
+                                        if (dragOffset.y < -35f && !didReorderDuringDrag) {
+                                            if (curIdx !in currentSelectedIndices) {
+                                                for (oldIdx in currentSelectedIndices.toList()) {
+                                                    currentOnCardClick(oldIdx)
+                                                }
+                                                currentOnCardClick(curIdx)
+                                                autoSelectedIndex = curIdx
+                                            }
                                             currentOnCardDragHover?.invoke(curIdx, globalPos)
                                         } else {
                                             // Reset board hover if finger is back down into hand
                                             currentOnCardDragHover?.invoke(curIdx, Offset(-1000f, -1000f))
+
+                                            // If we auto-selected while dragging upward, undo it when back in hand
+                                            val autoIdx = autoSelectedIndex
+                                            if (autoIdx != null && dragOffset.y > -20f) {
+                                                if (autoIdx in currentSelectedIndices) {
+                                                    currentOnCardClick(autoIdx)
+                                                }
+                                                autoSelectedIndex = null
+                                            }
 
                                             // Real-time card reordering (Tiến Lên Miền Nam style)
                                             val stepPx = step.toPx()
                                             val reorder = currentOnReorderHand
                                             if (reorder != null && stepPx > 0f && abs(dragOffset.y) < 70f) {
                                                 val total = currentTotalCards
-                                                val curDragX = dragOffset.x
-                                                if (curDragX > stepPx * 0.45f && curIdx < total - 1) {
+                                                var curDragX = dragOffset.x
+                                                val threshold = stepPx * 0.55f
+                                                while (curDragX > threshold && curIdx < total - 1) {
                                                     val nextIdx = curIdx + 1
                                                     if (currentVibrationEnabled) {
                                                         haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
                                                     }
+                                                    didReorderDuringDrag = true
                                                     reorder(curIdx, nextIdx)
+                                                    curIdx = nextIdx
                                                     draggingIndex = nextIdx
-                                                    dragOffset = dragOffset.copy(x = curDragX - stepPx)
-                                                } else if (curDragX < -stepPx * 0.45f && curIdx > 0) {
+                                                    curDragX -= stepPx
+                                                    dragOffset = dragOffset.copy(x = curDragX)
+                                                }
+                                                while (curDragX < -threshold && curIdx > 0) {
                                                     val prevIdx = curIdx - 1
                                                     if (currentVibrationEnabled) {
                                                         haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
                                                     }
+                                                    didReorderDuringDrag = true
                                                     reorder(curIdx, prevIdx)
+                                                    curIdx = prevIdx
                                                     draggingIndex = prevIdx
-                                                    dragOffset = dragOffset.copy(x = curDragX + stepPx)
+                                                    curDragX += stepPx
+                                                    dragOffset = dragOffset.copy(x = curDragX)
                                                 }
                                             }
                                         }
@@ -268,10 +285,13 @@ fun HandView(
                                         val rootPos = cardPositions[curIdx] ?: cardPositions[index] ?: Offset.Zero
                                         val finalGlobal = rootPos + finalOffset + touchInCard
                                         currentOnCardDragHover?.invoke(curIdx, Offset(-1000f, -1000f))
+                                        val wasReordered = didReorderDuringDrag
                                         draggingIndex = null
                                         dragOffset = Offset.Zero
+                                        didReorderDuringDrag = false
+                                        autoSelectedIndex = null
 
-                                        if (finalOffset.y < -50f) {
+                                        if (finalOffset.y < -50f && !wasReordered) {
                                             currentOnCardDrop?.invoke(curIdx, finalGlobal)
                                         }
                                     },
@@ -280,8 +300,17 @@ fun HandView(
                                         currentOnCardDragHover?.invoke(curIdx, Offset(-1000f, -1000f))
                                         draggingIndex = null
                                         dragOffset = Offset.Zero
+                                        didReorderDuringDrag = false
+                                        autoSelectedIndex = null
                                     }
                                 )
+                            }
+                            .offset {
+                                if (isDraggingThis) {
+                                    IntOffset(dragX.roundToInt(), dragY.roundToInt())
+                                } else {
+                                    IntOffset.Zero
+                                }
                             }
                     ) {
                         HandCardView(
@@ -289,23 +318,17 @@ fun HandView(
                             isSelected = isSelected,
                             isDead = isCardDead(card),
                             isCraftHighlight = isSelected && selectedIndices.size >= 2,
+                            isGuided = isGuided,
                             enabled = isCardEnabled,
                             onClick = {
                                 if (vibrationEnabled) {
                                     haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
                                 }
                                 soundController.playCardSelect()
-                                onCardClick(index)
+                                currentOnCardClick(index)
                             },
                             modifier = Modifier
                                 .alpha(cardAlpha)
-                                .then(
-                                    if (isGuided) {
-                                        Modifier
-                                            .shadow(16.dp, RoundedCornerShape(10.dp), ambientColor = GoldAccent, spotColor = GoldAccent)
-                                            .border(2.5.dp, GoldAccent, RoundedCornerShape(10.dp))
-                                    } else Modifier
-                                )
                                 .graphicsLayer {
                                     if (isDraggingThis) {
                                         scaleX = 1.12f
@@ -322,7 +345,7 @@ fun HandView(
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
-                                    .offset(y = (-36).dp + bounceOffset.dp),
+                                    .offset(y = (-40).dp + bounceOffset.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Surface(

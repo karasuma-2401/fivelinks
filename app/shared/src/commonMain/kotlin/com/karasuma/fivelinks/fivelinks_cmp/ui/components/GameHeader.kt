@@ -86,7 +86,7 @@ fun GameHeader(
         val members = gameState.players.filter { it.team == team }
         return when {
             viewerId != null && members.any { it.id == viewerId } -> "BẠN"
-            viewerId != null -> members.joinToString(" & ") { it.name }.uppercase()
+            viewerId != null -> "ĐỐI THỦ"
             members.any { it.isAi } -> "AI"
             humanCount == 1 -> "BẠN"
             else -> team.label()

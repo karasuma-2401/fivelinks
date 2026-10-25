@@ -146,7 +146,16 @@ class GameViewModel(
                 }
             }.toSet()
 
-            _uiState.update { it.copy(gameState = updatedState, selectedCardIndices = newSelectedIndices) }
+            val selection = cardSelection(updatedState, currentPlayer, newSelectedIndices)
+            _uiState.update {
+                it.copy(
+                    gameState = updatedState,
+                    selectedCardIndices = selection.indices,
+                    activeTacticalAction = selection.tacticalAction,
+                    validPlacementPositions = selection.placements,
+                    validSnipePositions = selection.snipes,
+                )
+            }
             onStateChanged?.invoke(updatedState)
         }
     }

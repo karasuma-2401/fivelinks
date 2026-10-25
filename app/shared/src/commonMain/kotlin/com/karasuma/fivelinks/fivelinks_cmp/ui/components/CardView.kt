@@ -156,6 +156,7 @@ fun HandCardView(
     width: Dp = HandCardWidth,
     isDead: Boolean = false,
     isCraftHighlight: Boolean = false,
+    isGuided: Boolean = false,
     enabled: Boolean = true,
     onClick: () -> Unit = {}
 ) {
@@ -166,6 +167,7 @@ fun HandCardView(
     val shape = RoundedCornerShape(width * 0.14f)
     val (borderWidth, borderColor) = when {
         isCraftHighlight -> 2.5.dp to GoldAccent
+        isGuided -> 2.5.dp to GoldAccent
         isSelected -> 2.dp to PureWhite
         else -> 1.dp to PureWhite.copy(alpha = 0.16f)
     }
@@ -180,7 +182,12 @@ fun HandCardView(
     Box(
         modifier = modifier
             .offset(y = lift)
-            .shadow(if (isSelected) 14.dp else 5.dp, shape)
+            .shadow(
+                elevation = if (isSelected || isGuided) 14.dp else 5.dp,
+                shape = shape,
+                ambientColor = if (isGuided) GoldAccent else Color.Black,
+                spotColor = if (isGuided) GoldAccent else Color.Black
+            )
             .semantics {
                 this.contentDescription = cardDesc
                 this.role = Role.Button

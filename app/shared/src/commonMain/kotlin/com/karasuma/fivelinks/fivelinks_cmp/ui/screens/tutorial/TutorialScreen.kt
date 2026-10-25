@@ -87,7 +87,7 @@ enum class TutorialStep(
         1,
         "01 / 04",
         "Tạo chuỗi 5 ô chiến thắng",
-        "Chạm lá 9♦ đang nhấp nháy, rồi chạm ô cờ trên bàn để tạo chuỗi 5!",
+        "Chạm lá 9♦\uFE0E đang nhấp nháy, rồi chạm ô cờ trên bàn để tạo chuỗi 5!",
         "Xuất sắc! Chuỗi 5 ô liên tiếp đã khóa vĩnh viễn không thể bị phá vỡ.",
         LineIcon.Sparkle
     ),
@@ -95,7 +95,7 @@ enum class TutorialStep(
         2,
         "02 / 04",
         "Jack 2 mắt — Đặt quân vạn năng",
-        "Jack 2 mắt (J♦, J♣) đặt được mọi ô! Chọn J♦ rồi chạm bất kỳ ô xanh nào.",
+        "Jack 2 mắt (J♦\uFE0E, J♣\uFE0E) đặt được mọi ô! Chọn J♦\uFE0E rồi chạm bất kỳ ô xanh nào.",
         "Chính xác! Jack 2 mắt giúp bạn kết nối thế cờ hiểm hóc và bất ngờ.",
         LineIcon.Star
     ),
@@ -103,7 +103,7 @@ enum class TutorialStep(
         3,
         "03 / 04",
         "Jack 1 mắt — Bắn tỉa quân đối thủ",
-        "Chọn Jack 1 mắt (J♠) rồi chạm 1 quân cờ Đỏ để gỡ bỏ nó khỏi bàn cờ!",
+        "Chọn Jack 1 mắt (J♠\uFE0E) rồi chạm 1 quân cờ Đỏ để gỡ bỏ nó khỏi bàn cờ!",
         "Phòng thủ chuẩn xác! Bạn đã tiêu diệt mối nguy của đối thủ.",
         LineIcon.Crosshair
     ),
@@ -280,13 +280,13 @@ fun TutorialScreen(
         if (stepSuccess) return@remember Triple(emptySet<Int>(), emptySet<Int>(), null)
         when (currentStep) {
             TutorialStep.STEP_1_SEQUENCE -> {
-                Triple(setOf(0), if (0 !in selectedIndices) setOf(0) else emptySet(), "CHỌN 9♦")
+                Triple(setOf(0), if (0 !in selectedIndices) setOf(0) else emptySet(), "CHỌN 9♦\uFE0E")
             }
             TutorialStep.STEP_2_JACK_WILD -> {
-                Triple(setOf(0), if (0 !in selectedIndices) setOf(0) else emptySet(), "CHỌN J♦")
+                Triple(setOf(0), if (0 !in selectedIndices) setOf(0) else emptySet(), "CHỌN J♦\uFE0E")
             }
             TutorialStep.STEP_3_JACK_SNIPE -> {
-                Triple(setOf(0), if (0 !in selectedIndices) setOf(0) else emptySet(), "CHỌN J♠")
+                Triple(setOf(0), if (0 !in selectedIndices) setOf(0) else emptySet(), "CHỌN J♠\uFE0E")
             }
             TutorialStep.STEP_4_TACTICAL_CRAFTING -> {
                 val unpicked = setOf(0, 1) - selectedIndices
@@ -739,7 +739,7 @@ private fun TutorialCoachingBar(
                         lineHeight = 15.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
