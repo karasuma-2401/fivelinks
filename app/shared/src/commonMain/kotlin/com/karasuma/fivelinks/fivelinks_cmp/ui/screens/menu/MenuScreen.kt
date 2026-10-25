@@ -71,6 +71,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIcon
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIconView
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LeaderboardDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.PlayingCardFace
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.RulesDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.components.SegmentedSelector
@@ -116,8 +117,11 @@ fun MenuScreen(
     vibrationEnabled: Boolean = true,
     onToggleVibration: (Boolean) -> Unit = {},
     onStartTutorial: () -> Unit = {},
+    playerId: String = "guest_player",
+    playerName: String = "Người chơi",
 ) {
     var showRules by remember { mutableStateOf(false) }
+    var showLeaderboard by remember { mutableStateOf(false) }
     val difficulties = Difficulty.entries
 
     Box(
@@ -277,6 +281,27 @@ fun MenuScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(
+                    onClick = { showLeaderboard = true },
+                    modifier = Modifier.height(44.dp)
+                ) {
+                    LineIconView(
+                        icon = LineIcon.Sparkle,
+                        color = GoldAccent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "XẾP HẠNG",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = GoldAccent
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                TextButton(
                     onClick = { showRules = true },
                     modifier = Modifier.height(44.dp)
                 ) {
@@ -302,6 +327,14 @@ fun MenuScreen(
 
         if (showRules) {
             RulesDialog(onDismiss = { showRules = false })
+        }
+
+        if (showLeaderboard) {
+            LeaderboardDialog(
+                playerId = playerId,
+                playerName = playerName,
+                onDismiss = { showLeaderboard = false }
+            )
         }
     }
 }

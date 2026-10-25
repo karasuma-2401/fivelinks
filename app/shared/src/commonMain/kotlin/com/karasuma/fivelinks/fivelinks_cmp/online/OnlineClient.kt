@@ -50,6 +50,16 @@ object ServerConfig {
             else -> null
         }
     }
+
+    fun httpBaseUrl(url: String): String {
+        val trimmed = url.trim().removeSuffix("/ws")
+        return when {
+            trimmed.startsWith("wss://") -> "https://" + trimmed.removePrefix("wss://")
+            trimmed.startsWith("ws://") -> "http://" + trimmed.removePrefix("ws://")
+            trimmed.startsWith("https://") || trimmed.startsWith("http://") -> trimmed
+            else -> "https://$trimmed"
+        }
+    }
 }
 
 /** The link to the game server, as the screens see it. */

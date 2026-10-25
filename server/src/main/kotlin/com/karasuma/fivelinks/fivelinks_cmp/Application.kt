@@ -2,6 +2,7 @@ package com.karasuma.fivelinks.fivelinks_cmp
 
 import com.karasuma.fivelinks.fivelinks_cmp.ai.AiFacadeService
 import com.karasuma.fivelinks.fivelinks_cmp.ai.AiService
+import com.karasuma.fivelinks.fivelinks_cmp.database.LeaderboardDatabase
 import com.karasuma.fivelinks.fivelinks_cmp.online.GameServer
 import com.karasuma.fivelinks.fivelinks_cmp.online.OnlineConfig
 import com.karasuma.fivelinks.fivelinks_cmp.online.onlineRoute
@@ -9,6 +10,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.protocol.ProtocolJson
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.ProtocolVersion
 import com.karasuma.fivelinks.fivelinks_cmp.route.aiRoute
 import com.karasuma.fivelinks.fivelinks_cmp.route.gameRoute
+import com.karasuma.fivelinks.fivelinks_cmp.route.leaderboardRoute
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
@@ -42,6 +44,7 @@ fun Application.module(
     aiService: AiService = AiFacadeService(),
     config: OnlineConfig = OnlineConfig.fromEnvironment(),
     gameServer: GameServer = GameServer(this, config),
+    database: LeaderboardDatabase = LeaderboardDatabase(),
 ) {
     install(ContentNegotiation) {
         json(ProtocolJson)
@@ -63,6 +66,7 @@ fun Application.module(
         aiRoute(aiService)
         gameRoute()
         onlineRoute(gameServer)
+        leaderboardRoute(database)
 
         get("/") {
             call.respondText(sayHello("Ktor"))

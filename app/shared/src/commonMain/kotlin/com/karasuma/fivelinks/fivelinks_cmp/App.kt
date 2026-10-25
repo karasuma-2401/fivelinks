@@ -217,7 +217,9 @@ fun App(
                                     vibrationEnabled = enabled
                                     offlineStorage.savePreferences(offlineStorage.loadPreferences().copy(vibrationEnabled = enabled))
                                 },
-                                onStartTutorial = { currentScreen = AppScreen.TUTORIAL }
+                                onStartTutorial = { currentScreen = AppScreen.TUTORIAL },
+                                playerId = onlineProfile.sessionToken ?: "guest_${onlineProfile.playerName.hashCode().toUInt().toString(16)}",
+                                playerName = onlineProfile.playerName,
                             )
                         }
 
