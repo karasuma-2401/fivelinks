@@ -135,7 +135,18 @@ class GameViewModel(
             val newHands = current.gameState.hands.toMutableMap()
             newHands[currentPlayer.id] = com.karasuma.fivelinks.fivelinks_cmp.domain.Hand(currentHand)
             val updatedState = current.gameState.copy(hands = newHands)
-            _uiState.update { it.copy(gameState = updatedState, selectedCardIndices = emptySet(), activeTacticalAction = null, validPlacementPositions = emptySet(), validSnipePositions = emptySet()) }
+
+            // Remap selected card index so selection is preserved
+            val newSelectedIndices = current.selectedCardIndices.map { idx ->
+                when {
+                    idx == fromIndex -> toIndex
+                    fromIndex < toIndex && idx in (fromIndex + 1)..toIndex -> idx - 1
+                    fromIndex > toIndex && idx in toIndex until fromIndex -> idx + 1
+                    else -> idx
+                }
+            }.toSet()
+
+            _uiState.update { it.copy(gameState = updatedState, selectedCardIndices = newSelectedIndices) }
             onStateChanged?.invoke(updatedState)
         }
     }

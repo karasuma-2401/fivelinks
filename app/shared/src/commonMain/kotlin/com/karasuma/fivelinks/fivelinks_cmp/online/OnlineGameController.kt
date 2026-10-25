@@ -78,7 +78,18 @@ class OnlineGameController(
             val moved = currentCards.removeAt(fromIndex)
             currentCards.add(toIndex, moved)
             customHandOrder.value = currentCards
-            picked.value = null
+            val currentPicked = picked.value
+            if (currentPicked != null) {
+                val newIndices = currentPicked.selection.indices.map { idx ->
+                    when {
+                        idx == fromIndex -> toIndex
+                        fromIndex < toIndex && idx in (fromIndex + 1)..toIndex -> idx - 1
+                        fromIndex > toIndex && idx in toIndex until fromIndex -> idx + 1
+                        else -> idx
+                    }
+                }.toSet()
+                picked.value = Picked(currentPicked.turn, cardSelection(game.state, me(game), newIndices))
+            }
         }
     }
 

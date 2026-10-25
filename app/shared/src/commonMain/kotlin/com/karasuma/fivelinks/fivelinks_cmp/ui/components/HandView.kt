@@ -3,10 +3,13 @@ package com.karasuma.fivelinks.fivelinks_cmp.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -38,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,16 +52,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalVibrationEnabled
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
@@ -111,6 +116,13 @@ fun HandView(
         )
     )
 
+    val currentSelectedIndices by rememberUpdatedState(selectedIndices)
+    val currentOnCardClick by rememberUpdatedState(onCardClick)
+    val currentOnReorderHand by rememberUpdatedState(onReorderHand)
+    val currentOnCardDragHover by rememberUpdatedState(onCardDragHover)
+    val currentOnCardDrop by rememberUpdatedState(onCardDrop)
+    val currentVibrationEnabled by rememberUpdatedState(vibrationEnabled)
+
     var draggingIndex by remember { mutableStateOf<Int?>(null) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     var touchInCard by remember { mutableStateOf(Offset.Zero) }
@@ -153,6 +165,7 @@ fun HandView(
                 .padding(top = 26.dp)
         ) {
             val totalCards = hand.cards.size
+            val currentTotalCards by rememberUpdatedState(totalCards)
             if (totalCards > 0) {
                 val cardWidth = HandCardWidth
                 val available = maxWidth - cardWidth - 56.dp
@@ -171,10 +184,17 @@ fun HandView(
                     val dragY = if (isDraggingThis) dragOffset.y else 0f
                     val dragX = if (isDraggingThis) dragOffset.x else 0f
 
+                    val targetX = startX + step * index
+                    val animatedX by animateDpAsState(
+                        targetValue = targetX,
+                        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+                    )
+                    val effectiveX = if (isDraggingThis) targetX else animatedX
+
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .offset(x = startX + step * index, y = (fromMiddle * fromMiddle * 1.4f).dp - 10.dp)
+                            .offset(x = effectiveX, y = (fromMiddle * fromMiddle * 1.4f).dp - 10.dp)
                             .offset {
                                 if (isDraggingThis) {
                                     IntOffset(dragX.roundToInt(), dragY.roundToInt())
@@ -195,43 +215,67 @@ fun HandView(
                                         draggingIndex = index
                                         dragOffset = Offset.Zero
                                         touchInCard = offset
-                                        if (index !in selectedIndices) {
-                                            onCardClick(index)
+                                        // Keep selection active if already tapped; select if new!
+                                        if (index !in currentSelectedIndices) {
+                                            currentOnCardClick(index)
                                         }
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
                                         dragOffset += dragAmount
-                                        val rootPos = cardPositions[index] ?: Offset.Zero
-                                        val globalPos = rootPos + dragOffset + touchInCard
-                                        if (dragOffset.y < -30f) {
-                                            onCardDragHover?.invoke(index, globalPos)
-                                        }
-                                    },
-                                    onDragEnd = {
-                                        val finalOffset = dragOffset
-                                        val wasDragging = draggingIndex == index
-                                        val rootPos = cardPositions[index] ?: Offset.Zero
-                                        val finalGlobal = rootPos + finalOffset + touchInCard
-                                        draggingIndex = null
-                                        dragOffset = Offset.Zero
 
-                                        if (wasDragging) {
-                                            if (finalOffset.y < -50f) {
-                                                onCardDrop?.invoke(index, finalGlobal)
-                                            } else if (abs(finalOffset.x) > 24f && onReorderHand != null) {
-                                                val shift = (finalOffset.x / step.toPx()).roundToInt()
-                                                val target = (index + shift).coerceIn(0, totalCards - 1)
-                                                if (target != index) {
-                                                    if (vibrationEnabled) {
+                                        val curIdx = draggingIndex ?: index
+                                        val rootPos = cardPositions[curIdx] ?: cardPositions[index] ?: Offset.Zero
+                                        val globalPos = rootPos + dragOffset + touchInCard
+
+                                        if (dragOffset.y < -30f) {
+                                            currentOnCardDragHover?.invoke(curIdx, globalPos)
+                                        } else {
+                                            // Reset board hover if finger is back down into hand
+                                            currentOnCardDragHover?.invoke(curIdx, Offset(-1000f, -1000f))
+
+                                            // Real-time card reordering (Tiến Lên Miền Nam style)
+                                            val stepPx = step.toPx()
+                                            val reorder = currentOnReorderHand
+                                            if (reorder != null && stepPx > 0f && abs(dragOffset.y) < 70f) {
+                                                val total = currentTotalCards
+                                                val curDragX = dragOffset.x
+                                                if (curDragX > stepPx * 0.45f && curIdx < total - 1) {
+                                                    val nextIdx = curIdx + 1
+                                                    if (currentVibrationEnabled) {
                                                         haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
                                                     }
-                                                    onReorderHand(index, target)
+                                                    reorder(curIdx, nextIdx)
+                                                    draggingIndex = nextIdx
+                                                    dragOffset = dragOffset.copy(x = curDragX - stepPx)
+                                                } else if (curDragX < -stepPx * 0.45f && curIdx > 0) {
+                                                    val prevIdx = curIdx - 1
+                                                    if (currentVibrationEnabled) {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                                    }
+                                                    reorder(curIdx, prevIdx)
+                                                    draggingIndex = prevIdx
+                                                    dragOffset = dragOffset.copy(x = curDragX + stepPx)
                                                 }
                                             }
                                         }
                                     },
+                                    onDragEnd = {
+                                        val finalOffset = dragOffset
+                                        val curIdx = draggingIndex ?: index
+                                        val rootPos = cardPositions[curIdx] ?: cardPositions[index] ?: Offset.Zero
+                                        val finalGlobal = rootPos + finalOffset + touchInCard
+                                        currentOnCardDragHover?.invoke(curIdx, Offset(-1000f, -1000f))
+                                        draggingIndex = null
+                                        dragOffset = Offset.Zero
+
+                                        if (finalOffset.y < -50f) {
+                                            currentOnCardDrop?.invoke(curIdx, finalGlobal)
+                                        }
+                                    },
                                     onDragCancel = {
+                                        val curIdx = draggingIndex ?: index
+                                        currentOnCardDragHover?.invoke(curIdx, Offset(-1000f, -1000f))
                                         draggingIndex = null
                                         dragOffset = Offset.Zero
                                     }

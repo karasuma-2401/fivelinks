@@ -2,6 +2,7 @@ package com.karasuma.fivelinks.fivelinks_cmp.ui.components
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,7 +58,26 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.screens.menu.components.Segmented
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
+import fivelinks_cmp.app.shared.generated.resources.Res
+import fivelinks_cmp.app.shared.generated.resources.rank_bronze
+import fivelinks_cmp.app.shared.generated.resources.rank_diamond
+import fivelinks_cmp.app.shared.generated.resources.rank_gold
+import fivelinks_cmp.app.shared.generated.resources.rank_grandmaster
+import fivelinks_cmp.app.shared.generated.resources.rank_platinum
+import fivelinks_cmp.app.shared.generated.resources.rank_silver
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+
+val RankTier.badgeDrawable: DrawableResource
+    get() = when (this) {
+        RankTier.BRONZE -> Res.drawable.rank_bronze
+        RankTier.SILVER -> Res.drawable.rank_silver
+        RankTier.GOLD -> Res.drawable.rank_gold
+        RankTier.PLATINUM -> Res.drawable.rank_platinum
+        RankTier.DIAMOND -> Res.drawable.rank_diamond
+        RankTier.GRANDMASTER -> Res.drawable.rank_grandmaster
+    }
 
 @Composable
 fun LeaderboardDialog(
@@ -310,7 +330,16 @@ private fun LeaderboardRow(
                 )
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(8.dp))
+
+            // Tier Emblem
+            Image(
+                painter = painterResource(entry.tier.badgeDrawable),
+                contentDescription = entry.tier.displayName,
+                modifier = Modifier.size(34.dp)
+            )
+
+            Spacer(Modifier.width(10.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -373,16 +402,20 @@ private fun PlayerProfileTab(
         // Tier Emblem
         Box(
             modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(Color(entry.tier.badgeColorHex).copy(alpha = 0.18f))
-                .border(2.dp, Color(entry.tier.badgeColorHex), CircleShape),
+                .size(96.dp)
+                .padding(2.dp),
             contentAlignment = Alignment.Center
         ) {
-            LineIconView(
-                icon = LineIcon.Sparkle,
-                color = Color(entry.tier.badgeColorHex),
-                modifier = Modifier.size(36.dp)
+            Box(
+                modifier = Modifier
+                    .size(76.dp)
+                    .clip(CircleShape)
+                    .background(Color(entry.tier.badgeColorHex).copy(alpha = 0.20f))
+            )
+            Image(
+                painter = painterResource(entry.tier.badgeDrawable),
+                contentDescription = entry.tier.displayName,
+                modifier = Modifier.fillMaxSize()
             )
         }
 
