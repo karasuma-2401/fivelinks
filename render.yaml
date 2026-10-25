@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: fivelinks-server
+    runtime: docker
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: MAX_ROOMS
+        value: "500"
+      - key: MAX_SESSIONS
+        value: "2000"
