@@ -3,13 +3,14 @@ package com.karasuma.fivelinks.fivelinks_cmp.ui.screens.tutorial
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -27,9 +28,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,6 +42,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -58,13 +61,19 @@ import com.karasuma.fivelinks.fivelinks_cmp.domain.Rank
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Suit
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.BoardGrid
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.GameHeader
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.GameNotice
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.GameNoticeBanner
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.HandView
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIcon
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.LineIconView
+import com.karasuma.fivelinks.fivelinks_cmp.ui.components.RulesDialog
 import com.karasuma.fivelinks.fivelinks_cmp.ui.components.TacticalCraftingBar
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.BrandRed
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.PureWhite
 import com.karasuma.fivelinks.fivelinks_cmp.ui.viewmodel.TacticalAction
+import kotlinx.coroutines.delay
 
 enum class TutorialStep(
     val stepIndex: Int,
@@ -78,32 +87,32 @@ enum class TutorialStep(
         1,
         "01 / 04",
         "Tạo chuỗi 5 ô chiến thắng",
-        "Chọn lá bài 9 Rô (9♦) trên tay, sau đó chạm vào ô nhấp nháy trên bàn cờ để hoàn thành chuỗi 5 ô liên tiếp!",
-        "Xuất sắc! Bạn vừa hoàn thành chuỗi Sequence đầu tiên. 4 ô góc có biểu tượng ngôi sao luôn là ô tự do vĩnh viễn cho tất cả người chơi!",
+        "Chạm lá 9♦ đang nhấp nháy, rồi chạm ô cờ trên bàn để tạo chuỗi 5!",
+        "Xuất sắc! Chuỗi 5 ô liên tiếp đã khóa vĩnh viễn không thể bị phá vỡ.",
         LineIcon.Sparkle
     ),
     STEP_2_JACK_WILD(
         2,
         "02 / 04",
         "Jack 2 mắt — Đặt quân vạn năng",
-        "Jack 2 mắt (J rô ♦, J chuồn ♣) là quân bài tự do quyền lực nhất! Hãy chọn lá J♦ và chạm vào bất kỳ ô xanh nhấp nháy nào để đặt cờ.",
-        "Chính xác! Dùng Jack 2 mắt đúng thời điểm sẽ giúp bạn nối chuỗi bất ngờ hoặc tạo thế cờ hiểm hóc!",
+        "Jack 2 mắt (J♦, J♣) đặt được mọi ô! Chọn J♦ rồi chạm bất kỳ ô xanh nào.",
+        "Chính xác! Jack 2 mắt giúp bạn kết nối thế cờ hiểm hóc và bất ngờ.",
         LineIcon.Star
     ),
     STEP_3_JACK_SNIPE(
         3,
         "03 / 04",
         "Jack 1 mắt — Bắn tỉa quân đối thủ",
-        "Đối thủ (màu Đỏ) đang có 4 quân sắp tạo chuỗi! Hãy chọn Jack 1 mắt (J bích ♠) và chạm vào 1 quân cờ Đỏ để bắn tỉa và gỡ bỏ nó!",
-        "Phòng thủ hoàn hảo! Jack 1 mắt giúp bạn tiêu diệt quân của đối thủ (trừ những quân đã thuộc chuỗi 5 đã khóa).",
+        "Chọn Jack 1 mắt (J♠) rồi chạm 1 quân cờ Đỏ để gỡ bỏ nó khỏi bàn cờ!",
+        "Phòng thủ chuẩn xác! Bạn đã tiêu diệt mối nguy của đối thủ.",
         LineIcon.Crosshair
     ),
     STEP_4_TACTICAL_CRAFTING(
         4,
         "04 / 04",
         "Ghép bài chiến thuật đỉnh cao",
-        "Không có Jack? Chọn 2 lá bài cùng số (đôi 7) trên tay để GHÉP thành 1 Jack nhân tạo, sau đó đặt quân cờ lên bàn cờ!",
-        "Tuyệt chiêu đỉnh cao! Bạn đã thuần thục tính năng Chế tạo chiến thuật độc quyền của FiveLink!",
+        "Chọn 2 lá bài đôi 7 trên tay để GHÉP thành 1 Jack nhân tạo quyền lực!",
+        "Tuyệt vời! Bạn đã làm chủ cơ chế Chế tạo chiến thuật độc quyền.",
         LineIcon.Bolt
     )
 }
@@ -118,6 +127,16 @@ fun TutorialScreen(
     var currentStep by remember { mutableStateOf(TutorialStep.STEP_1_SEQUENCE) }
     var stepSuccess by remember { mutableStateOf(false) }
     var showCompletionDialog by remember { mutableStateOf(false) }
+    var showRules by remember { mutableStateOf(false) }
+    var tutorialNotice by remember { mutableStateOf<GameNotice?>(null) }
+    var elapsedSeconds by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000)
+            elapsedSeconds++
+        }
+    }
 
     val bluePlayer = remember { Player(id = "player_blue", name = "Bạn", team = Team.BLUE) }
     val redPlayer = remember { Player(id = "player_red", name = "Đối thủ", team = Team.RED) }
@@ -210,7 +229,7 @@ fun TutorialScreen(
         )
     }
 
-    // Build synthetic GameState for rendering components
+    // Build synthetic GameState for native rendering components
     val board = remember { Board.standard }
     val currentGameState = remember(placedChips, lockedSequences, handCards) {
         GameState(
@@ -294,6 +313,35 @@ fun TutorialScreen(
         }
     }
 
+    val advanceToNextStep = {
+        when (currentStep) {
+            TutorialStep.STEP_1_SEQUENCE -> {
+                currentStep = TutorialStep.STEP_2_JACK_WILD
+                selectedIndices = emptySet()
+                activeTacticalAction = null
+                stepSuccess = false
+                tutorialNotice = null
+            }
+            TutorialStep.STEP_2_JACK_WILD -> {
+                currentStep = TutorialStep.STEP_3_JACK_SNIPE
+                selectedIndices = emptySet()
+                activeTacticalAction = null
+                stepSuccess = false
+                tutorialNotice = null
+            }
+            TutorialStep.STEP_3_JACK_SNIPE -> {
+                currentStep = TutorialStep.STEP_4_TACTICAL_CRAFTING
+                selectedIndices = emptySet()
+                activeTacticalAction = null
+                stepSuccess = false
+                tutorialNotice = null
+            }
+            TutorialStep.STEP_4_TACTICAL_CRAFTING -> {
+                showCompletionDialog = true
+            }
+        }
+    }
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -303,36 +351,23 @@ fun TutorialScreen(
         val isWide = maxWidth >= 760.dp && maxWidth > maxHeight * 1.05f
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // Tutorial Header Coaching Banner
-            TutorialCoachingCard(
+            // Native Game Header for 100% visual parity with the real game
+            GameHeader(
+                gameState = currentGameState,
+                isAiThinking = false,
+                elapsedSeconds = elapsedSeconds,
+                onRestartClick = null,
+                onRulesClick = { showRules = true },
+                onMenuClick = onFinishTutorial,
+                viewerId = bluePlayer.id
+            )
+
+            // Floating Coaching HUD Banner
+            TutorialCoachingBar(
                 step = currentStep,
                 isSuccess = stepSuccess,
                 onSkip = onFinishTutorial,
-                onNextStep = {
-                    when (currentStep) {
-                        TutorialStep.STEP_1_SEQUENCE -> {
-                            currentStep = TutorialStep.STEP_2_JACK_WILD
-                            selectedIndices = emptySet()
-                            activeTacticalAction = null
-                            stepSuccess = false
-                        }
-                        TutorialStep.STEP_2_JACK_WILD -> {
-                            currentStep = TutorialStep.STEP_3_JACK_SNIPE
-                            selectedIndices = emptySet()
-                            activeTacticalAction = null
-                            stepSuccess = false
-                        }
-                        TutorialStep.STEP_3_JACK_SNIPE -> {
-                            currentStep = TutorialStep.STEP_4_TACTICAL_CRAFTING
-                            selectedIndices = emptySet()
-                            activeTacticalAction = null
-                            stepSuccess = false
-                        }
-                        TutorialStep.STEP_4_TACTICAL_CRAFTING -> {
-                            showCompletionDialog = true
-                        }
-                    }
-                }
+                onNextStep = advanceToNextStep
             )
 
             if (isWide) {
@@ -379,20 +414,52 @@ fun TutorialScreen(
                                                         )
                                                     )
                                                 )
+                                                tutorialNotice = GameNotice(
+                                                    id = 1L,
+                                                    text = "🎉 CHUỖI SEQUENCE ĐẦU TIÊN! Đã khóa 5 ô liên tiếp",
+                                                    accent = GoldAccent,
+                                                    icon = LineIcon.Sparkle,
+                                                    emphasis = true
+                                                )
                                             }
                                             TutorialStep.STEP_2_JACK_WILD -> {
                                                 placedChips = placedChips.place(pos, Team.BLUE)
+                                                tutorialNotice = GameNotice(
+                                                    id = 2L,
+                                                    text = "⭐ JACK 2 MẮT: Đặt cờ vạn năng thành công!",
+                                                    accent = GoldAccent,
+                                                    icon = LineIcon.Star,
+                                                    emphasis = true
+                                                )
                                             }
                                             TutorialStep.STEP_3_JACK_SNIPE -> {
                                                 placedChips = placedChips.remove(pos)
+                                                tutorialNotice = GameNotice(
+                                                    id = 3L,
+                                                    text = "🎯 BẮN TỈA CHUẨN XÁC! Đã gỡ quân cờ Đỏ của đối thủ",
+                                                    accent = BrandRed,
+                                                    icon = LineIcon.Crosshair,
+                                                    emphasis = true
+                                                )
                                             }
                                             TutorialStep.STEP_4_TACTICAL_CRAFTING -> {
                                                 placedChips = placedChips.place(pos, Team.BLUE)
+                                                tutorialNotice = GameNotice(
+                                                    id = 4L,
+                                                    text = "⚡ CHẾ TẠO CHIẾN THUẬT: Đã ghép đôi 7 thành Jack tự do!",
+                                                    accent = GoldAccent,
+                                                    icon = LineIcon.Bolt,
+                                                    emphasis = true
+                                                )
                                             }
                                         }
                                     }
                                 )
                             }
+                        )
+                        GameNoticeBanner(
+                            notice = tutorialNotice,
+                            modifier = Modifier.align(Alignment.TopCenter)
                         )
                     }
 
@@ -428,7 +495,7 @@ fun TutorialScreen(
                     }
                 }
             } else {
-                // Portrait layout
+                // Native mobile vertical portrait layout
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -437,7 +504,7 @@ fun TutorialScreen(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         BoardGrid(
@@ -469,20 +536,52 @@ fun TutorialScreen(
                                                         )
                                                     )
                                                 )
+                                                tutorialNotice = GameNotice(
+                                                    id = 1L,
+                                                    text = "🎉 CHUỖI SEQUENCE ĐẦU TIÊN! Đã khóa 5 ô liên tiếp",
+                                                    accent = GoldAccent,
+                                                    icon = LineIcon.Sparkle,
+                                                    emphasis = true
+                                                )
                                             }
                                             TutorialStep.STEP_2_JACK_WILD -> {
                                                 placedChips = placedChips.place(pos, Team.BLUE)
+                                                tutorialNotice = GameNotice(
+                                                    id = 2L,
+                                                    text = "⭐ JACK 2 MẮT: Đặt cờ vạn năng thành công!",
+                                                    accent = GoldAccent,
+                                                    icon = LineIcon.Star,
+                                                    emphasis = true
+                                                )
                                             }
                                             TutorialStep.STEP_3_JACK_SNIPE -> {
                                                 placedChips = placedChips.remove(pos)
+                                                tutorialNotice = GameNotice(
+                                                    id = 3L,
+                                                    text = "🎯 BẮN TỈA CHUẨN XÁC! Đã gỡ quân cờ Đỏ của đối thủ",
+                                                    accent = BrandRed,
+                                                    icon = LineIcon.Crosshair,
+                                                    emphasis = true
+                                                )
                                             }
                                             TutorialStep.STEP_4_TACTICAL_CRAFTING -> {
                                                 placedChips = placedChips.place(pos, Team.BLUE)
+                                                tutorialNotice = GameNotice(
+                                                    id = 4L,
+                                                    text = "⚡ CHẾ TẠO CHIẾN THUẬT: Đã ghép đôi 7 thành Jack tự do!",
+                                                    accent = GoldAccent,
+                                                    icon = LineIcon.Bolt,
+                                                    emphasis = true
+                                                )
                                             }
                                         }
                                     }
                                 )
                             }
+                        )
+                        GameNoticeBanner(
+                            notice = tutorialNotice,
+                            modifier = Modifier.align(Alignment.TopCenter)
                         )
                     }
 
@@ -491,7 +590,7 @@ fun TutorialScreen(
                         onTriggerDivineWipe = {}
                     )
 
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(2.dp))
 
                     HandView(
                         hand = Hand(handCards),
@@ -512,6 +611,10 @@ fun TutorialScreen(
                 }
             }
         }
+    }
+
+    if (showRules) {
+        RulesDialog(onDismiss = { showRules = false })
     }
 
     if (showCompletionDialog) {
@@ -574,7 +677,7 @@ private fun handleCellClick(
 }
 
 @Composable
-private fun TutorialCoachingCard(
+private fun TutorialCoachingBar(
     step: TutorialStep,
     isSuccess: Boolean,
     onSkip: () -> Unit,
@@ -584,37 +687,84 @@ private fun TutorialCoachingCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 6.dp)
-            .shadow(6.dp, RoundedCornerShape(18.dp)),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(18.dp),
-        tonalElevation = 4.dp
+        tonalElevation = 6.dp,
+        shadowElevation = 6.dp,
+        border = BorderStroke(
+            1.dp,
+            if (isSuccess) GoldAccent else MaterialTheme.colorScheme.outlineVariant
+        )
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .background(BrandRed.copy(alpha = 0.15f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        LineIconView(step.icon, color = BrandRed, modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "HƯỚNG DẪN TƯƠNG TÁC • ${step.stepLabel}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandRed,
-                        letterSpacing = 1.sp
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(if (isSuccess) GoldAccent.copy(alpha = 0.2f) else BrandRed.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LineIconView(
+                        icon = if (isSuccess) LineIcon.Sparkle else step.icon,
+                        color = if (isSuccess) GoldAccent else BrandRed,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
 
+                Spacer(Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isSuccess) "HOÀN THÀNH BÀI ${step.stepIndex}/4" else "BÀI HỌC ${step.stepIndex}/4: ${step.title.uppercase()}",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.8.sp,
+                        color = if (isSuccess) GoldAccent else BrandRed,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = if (isSuccess) step.successText else step.instruction,
+                        fontSize = 11.5.sp,
+                        lineHeight = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            if (isSuccess) {
+                Button(
+                    onClick = onNextStep,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BrandRed,
+                        contentColor = PureWhite
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.height(34.dp)
+                ) {
+                    Text(
+                        text = if (step == TutorialStep.STEP_4_TACTICAL_CRAFTING) "HOÀN TẤT ➔" else "TIẾP ➔",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            } else {
                 Text(
                     text = "BỎ QUA",
                     fontSize = 11.sp,
@@ -623,47 +773,8 @@ private fun TutorialCoachingCard(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .clickable(role = Role.Button, onClick = onSkip)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
                 )
-            }
-
-            Spacer(Modifier.height(6.dp))
-
-            Text(
-                text = step.title,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(Modifier.height(4.dp))
-
-            Text(
-                text = if (isSuccess) step.successText else step.instruction,
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
-                color = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            AnimatedVisibility(visible = isSuccess, enter = fadeIn(), exit = fadeOut()) {
-                Column {
-                    Spacer(Modifier.height(10.dp))
-                    Button(
-                        onClick = onNextStep,
-                        modifier = Modifier.fillMaxWidth().height(40.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = BrandRed,
-                            contentColor = PureWhite
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = if (step == TutorialStep.STEP_4_TACTICAL_CRAFTING) "HOÀN THÀNH HUẤN LUYỆN ➔" else "BÀI HỌC TIẾP THEO ➔",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
             }
         }
     }
@@ -678,7 +789,10 @@ private fun TutorialCompletionDialog(
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
-            modifier = Modifier.fillMaxWidth().padding(16.dp).shadow(12.dp, RoundedCornerShape(24.dp))
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .shadow(12.dp, RoundedCornerShape(24.dp))
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -687,10 +801,10 @@ private fun TutorialCompletionDialog(
                 Box(
                     modifier = Modifier
                         .size(56.dp)
-                        .background(BrandRed.copy(alpha = 0.15f), CircleShape),
+                        .background(GoldAccent.copy(alpha = 0.15f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    LineIconView(LineIcon.Sparkle, color = BrandRed, modifier = Modifier.size(32.dp))
+                    LineIconView(LineIcon.Sparkle, color = GoldAccent, modifier = Modifier.size(32.dp))
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -706,7 +820,7 @@ private fun TutorialCompletionDialog(
                 Spacer(Modifier.height(8.dp))
 
                 Text(
-                    text = "Bạn đã nắm vững: Tạo chuỗi 5 ô, quân Jack 1 mắt/2 mắt, và Tuyệt kỹ ghép bài chiến thuật. Giờ hãy bước vào đấu trường FiveLink!",
+                    text = "Bạn đã nắm vững: Tạo chuỗi 5 ô, quân Jack 1 mắt / 2 mắt, và Tuyệt kỹ ghép bài chiến thuật. Giờ hãy bước vào đấu trường FiveLink!",
                     fontSize = 13.sp,
                     lineHeight = 19.sp,
                     textAlign = TextAlign.Center,
@@ -717,7 +831,9 @@ private fun TutorialCompletionDialog(
 
                 Button(
                     onClick = onFinish,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandRed, contentColor = PureWhite),
                     shape = RoundedCornerShape(14.dp)
                 ) {

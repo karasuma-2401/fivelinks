@@ -39,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -127,8 +129,9 @@ fun HandView(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(HandCardWidth * 1.5f + 20.dp)
+                .height(HandCardWidth * 1.5f + 48.dp)
                 .alpha(handAlpha)
+                .padding(top = 26.dp)
         ) {
             val totalCards = hand.cards.size
             if (totalCards > 0) {
@@ -166,6 +169,13 @@ fun HandView(
                             },
                             modifier = Modifier
                                 .alpha(cardAlpha)
+                                .then(
+                                    if (isGuided) {
+                                        Modifier
+                                            .shadow(16.dp, RoundedCornerShape(10.dp), ambientColor = GoldAccent, spotColor = GoldAccent)
+                                            .border(2.5.dp, GoldAccent, RoundedCornerShape(10.dp))
+                                    } else Modifier
+                                )
                                 .graphicsLayer {
                                     rotationZ = fromMiddle * 2.6f
                                     transformOrigin = TransformOrigin(0.5f, 1f)
@@ -176,7 +186,7 @@ fun HandView(
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
-                                    .offset(y = (-34).dp + bounceOffset.dp),
+                                    .offset(y = (-36).dp + bounceOffset.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Surface(
