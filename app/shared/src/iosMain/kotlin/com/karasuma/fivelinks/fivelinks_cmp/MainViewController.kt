@@ -6,7 +6,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.online.ServerConfig
 import com.karasuma.fivelinks.fivelinks_cmp.storage.IosOfflineStorage
 
 fun MainViewController(
-    onlineServerUrl: String = ServerConfig.DEV_URL,
+    onlineServerUrl: String = ServerConfig.CLOUD_WS_URL,
     requireSecureOnline: Boolean = false,
 ) = ComposeUIViewController {
     App(

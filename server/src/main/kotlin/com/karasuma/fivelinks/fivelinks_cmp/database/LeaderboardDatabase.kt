@@ -16,15 +16,20 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.sql.DataSource
 
 class LeaderboardDatabase(
-    connectionString: String? = null
+    connectionString: String? = null,
+    inMemoryOnly: Boolean = false
 ) {
     private val logger = LoggerFactory.getLogger(LeaderboardDatabase::class.java)
 
-    private val effectiveUrl: String? = connectionString
-        ?.takeIf { it.isNotBlank() }
-        ?: System.getenv("DATABASE_URL")?.takeIf { it.isNotBlank() }
-        ?: System.getenv("NEON_DATABASE_URL")?.takeIf { it.isNotBlank() }
-        ?: loadDotEnvDatabaseUrl()
+    private val effectiveUrl: String? = if (inMemoryOnly) {
+        null
+    } else {
+        connectionString
+            ?.takeIf { it.isNotBlank() }
+            ?: System.getenv("DATABASE_URL")?.takeIf { it.isNotBlank() }
+            ?: System.getenv("NEON_DATABASE_URL")?.takeIf { it.isNotBlank() }
+            ?: loadDotEnvDatabaseUrl()
+    }
 
     private var dataSource: DataSource? = null
     private val inMemoryFallback = ConcurrentHashMap<String, PlayerLeaderboardEntry>()

@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalSoundController
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.PlayerId
@@ -88,9 +89,11 @@ fun GameOverOverlay(
         else -> "CHIẾN THẮNG"
     }
     val sequences = winner?.let { gameState.sequencesOf(it) } ?: 0
+    val soundController = LocalSoundController.current
 
     val intro = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
+        if (playerLost) soundController.playDefeat() else soundController.playVictory()
         intro.animateTo(1f, tween(durationMillis = 1300, easing = FastOutSlowInEasing))
     }
 

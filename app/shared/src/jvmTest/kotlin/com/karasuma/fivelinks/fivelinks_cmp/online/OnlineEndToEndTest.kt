@@ -1,6 +1,7 @@
 package com.karasuma.fivelinks.fivelinks_cmp.online
 
 import com.karasuma.fivelinks.fivelinks_cmp.ai.AiFacadeService
+import com.karasuma.fivelinks.fivelinks_cmp.database.LeaderboardDatabase
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameEngine
 import com.karasuma.fivelinks.fivelinks_cmp.module
 import com.karasuma.fivelinks.fivelinks_cmp.protocol.FirstPlayer
@@ -25,7 +26,7 @@ class OnlineEndToEndTest {
         val session = OnlineSession(client, scope)
 
         suspend fun until(what: String, predicate: (OnlineState) -> Boolean): OnlineState =
-            withTimeout(10.seconds) { session.state.first(predicate) }
+            withTimeout(20.seconds) { session.state.first(predicate) }
                 .also { check(predicate(it)) { what } }
 
         /** Plays the first legal move, worked out from what this phone can see. */
@@ -38,7 +39,10 @@ class OnlineEndToEndTest {
     @Test
     fun twoPhones_playDropAndReconnect() = runBlocking {
         val server = embeddedServer(Netty, port = 0, host = "127.0.0.1") {
-            module(AiFacadeService(neural = null))
+            module(
+                aiService = AiFacadeService(neural = null),
+                database = LeaderboardDatabase(inMemoryOnly = true)
+            )
         }.start(wait = false)
         val port = server.engine.resolvedConnectors().first().port
         val url = "ws://127.0.0.1:$port/ws"

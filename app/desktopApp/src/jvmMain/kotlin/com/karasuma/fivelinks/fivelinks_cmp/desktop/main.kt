@@ -28,4 +28,4 @@ fun main() = application {
 private fun configuredServerUrl(): String =
     System.getProperty("fivelinks.serverUrl")
         ?: System.getenv("FIVELINKS_SERVER_URL")
-        ?: ServerConfig.DEV_URL
+        ?: ServerConfig.CLOUD_WS_URL

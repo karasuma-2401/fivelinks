@@ -74,7 +74,7 @@ jobs:
         run: ./gradlew :app:desktopApp:jvmJar :server:installDist --no-daemon --console=plain
 
       - name: Build Web Application
-        run: ./gradlew :app:webApp:jsBrowserDistribution --no-daemon --console=plain
+        run: ./gradlew kotlinUpgradeYarnLock :app:webApp:jsBrowserDistribution --no-daemon --console=plain
 
   build-android:
     name: Verify Android Build
@@ -108,7 +108,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fivelinks-android-debug
-          path: app/androidApp/build/outputs/apk/debug/app-androidApp-debug.apk
+          path: app/androidApp/build/outputs/apk/debug/*.apk
 
   build-docker:
     name: Verify Server Container Image

@@ -21,8 +21,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.karasuma.fivelinks.fivelinks_cmp.ai.Difficulty
+import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalSoundController
 import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalSoundEnabled
 import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalVibrationEnabled
+import com.karasuma.fivelinks.fivelinks_cmp.audio.rememberSoundController
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Team
 import com.karasuma.fivelinks.fivelinks_cmp.model.PlayerSyncRequest
@@ -76,6 +78,7 @@ fun App(
 
     var soundEnabled by remember { mutableStateOf(initialPrefs.soundEnabled) }
     var vibrationEnabled by remember { mutableStateOf(initialPrefs.vibrationEnabled) }
+    val soundController = rememberSoundController(enabled = soundEnabled)
     var hasCompletedOnboarding by remember { mutableStateOf(initialPrefs.hasCompletedOnboarding) }
     var savedGame by remember {
         mutableStateOf(offlineStorage.loadSavedGame()?.takeIf { !it.gameState.isGameOver })
@@ -87,6 +90,7 @@ fun App(
 
     FiveLinksTheme(darkTheme = isNightTheme) {
         CompositionLocalProvider(
+            LocalSoundController provides soundController,
             LocalSoundEnabled provides soundEnabled,
             LocalVibrationEnabled provides vibrationEnabled
         ) {
@@ -311,6 +315,7 @@ fun App(
                                 onToggleSound = { enabled ->
                                     soundEnabled = enabled
                                     offlineStorage.savePreferences(offlineStorage.loadPreferences().copy(soundEnabled = enabled))
+                                    if (enabled) soundController.playChipPlace()
                                 },
                                 vibrationEnabled = vibrationEnabled,
                                 onToggleVibration = { enabled ->

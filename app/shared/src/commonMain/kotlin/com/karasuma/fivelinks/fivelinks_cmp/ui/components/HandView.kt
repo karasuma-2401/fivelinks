@@ -63,6 +63,7 @@ import com.karasuma.fivelinks.fivelinks_cmp.ui.theme.GoldAccent
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalSoundController
 import com.karasuma.fivelinks.fivelinks_cmp.audio.LocalVibrationEnabled
 import com.karasuma.fivelinks.fivelinks_cmp.domain.Card
 import com.karasuma.fivelinks.fivelinks_cmp.domain.GameState
@@ -105,6 +106,7 @@ fun HandView(
     val handAlpha by animateFloatAsState(if (isInteractive) 1f else 0.6f)
     val haptic = LocalHapticFeedback.current
     val vibrationEnabled = LocalVibrationEnabled.current
+    val soundController = LocalSoundController.current
 
     val infiniteTransition = rememberInfiniteTransition()
     val bounceOffset by infiniteTransition.animateFloat(
@@ -292,6 +294,7 @@ fun HandView(
                                 if (vibrationEnabled) {
                                     haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
                                 }
+                                soundController.playCardSelect()
                                 onCardClick(index)
                             },
                             modifier = Modifier
