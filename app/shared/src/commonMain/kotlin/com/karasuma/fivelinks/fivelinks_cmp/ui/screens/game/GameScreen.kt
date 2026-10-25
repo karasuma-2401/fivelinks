@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -82,6 +83,8 @@ private enum class PendingConfirm {
 fun GameScreen(
     controller: GameController,
     onExitToMenu: () -> Unit,
+    initialElapsedSeconds: Int = 0,
+    onElapsedSecondsChanged: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by controller.uiState.collectAsState()
@@ -94,20 +97,61 @@ fun GameScreen(
     val haptic = LocalHapticFeedback.current
     val vibrationEnabled = LocalVibrationEnabled.current
 
-    // Match clock: ticks only while the game is live and the app is in the foreground.
-    var elapsedSeconds by remember(controller) { mutableIntStateOf(0) }
+    val gameState = uiState.gameState
+    val currentPlayer = gameState.currentPlayer
+    val localPlayer = uiState.localPlayerId?.let { localId ->
+        gameState.players.firstOrNull { it.id == localId }
+    }
+    // Against the AI, keep the human's own hand on screen during the AI turn.
+    val handOwner = localPlayer ?: if (currentPlayer.isAi) {
+        gameState.players.firstOrNull { !it.isAi } ?: currentPlayer
+    } else {
+        currentPlayer
+    }
+    val isLocalTurn = localPlayer?.id == currentPlayer.id || (localPlayer == null && !currentPlayer.isAi)
+    val isPlayerTurn = isLocalTurn && !uiState.isAiThinking && !uiState.isPassingTurn && !uiState.isGameOver
+
+    // Match clock: in AI matches, ticks ONLY during the human player's turn and pauses while AI is thinking/acting.
+    val hasAiOpponent = gameState.players.any { it.isAi }
+    var elapsedMillis by remember(controller) { mutableLongStateOf(initialElapsedSeconds.coerceAtLeast(0) * 1000L) }
+    val elapsedSeconds = (elapsedMillis / 1000L).toInt()
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val clockRunning = !uiState.isGameOver && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+    val isForeground = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+    val clockRunning = !uiState.isGameOver && isForeground &&
+        (!hasAiOpponent || (!currentPlayer.isAi && !uiState.isAiThinking && !uiState.isPassingTurn))
+
     LaunchedEffect(controller, clockRunning) {
         if (!clockRunning) return@LaunchedEffect
+        var lastMark = TimeSource.Monotonic.markNow()
         while (true) {
-            delay(1000)
-            elapsedSeconds++
+            delay(100)
+            val now = TimeSource.Monotonic.markNow()
+            val deltaMs = (now - lastMark).inWholeMilliseconds.coerceAtLeast(0L)
+            lastMark = now
+            val prevSec = (elapsedMillis / 1000L).toInt()
+            elapsedMillis += deltaMs
+            val nextSec = (elapsedMillis / 1000L).toInt()
+            if (nextSec != prevSec) {
+                onElapsedSecondsChanged(nextSec)
+            }
         }
     }
+
+    // Separate 1s ticker to refresh online server turn / forfeit countdowns even when local clock is paused.
+    var serverClockTick by remember(controller) { mutableIntStateOf(0) }
+    val hasServerDeadlines = uiState.turnEndsAt != null || uiState.opponentForfeitAt != null
+    LaunchedEffect(controller, hasServerDeadlines, isForeground, uiState.isGameOver) {
+        if (!hasServerDeadlines || !isForeground || uiState.isGameOver) return@LaunchedEffect
+        while (true) {
+            delay(1000)
+            serverClockTick++
+        }
+    }
+
     val restartGame = {
         controller.startNewGame()
-        elapsedSeconds = 0
+        elapsedMillis = 0L
+        onElapsedSecondsChanged(0)
         notice = null
     }
 
@@ -131,21 +175,9 @@ fun GameScreen(
         noticeShownAt = TimeSource.Monotonic.markNow()
     }
 
-    val gameState = uiState.gameState
-    val currentPlayer = gameState.currentPlayer
-    val localPlayer = uiState.localPlayerId?.let { localId ->
-        gameState.players.firstOrNull { it.id == localId }
-    }
-    // Against the AI, keep the human's own hand on screen during the AI turn.
-    val handOwner = localPlayer ?: if (currentPlayer.isAi) {
-        gameState.players.firstOrNull { !it.isAi } ?: currentPlayer
-    } else {
-        currentPlayer
-    }
-    val isLocalTurn = localPlayer?.id == currentPlayer.id || (localPlayer == null && !currentPlayer.isAi)
-    val isPlayerTurn = isLocalTurn && !uiState.isAiThinking && !uiState.isPassingTurn && !uiState.isGameOver
-
-    // The local match clock also drives a recomposition every second for the server's turn clock.
+    // The server turn clock recomputes every second via serverClockTick / elapsedSeconds.
+    @Suppress("UNUSED_EXPRESSION")
+    serverClockTick
     val serverTurnSeconds = uiState.turnEndsAt?.let { deadline ->
         (deadline - TimeSource.Monotonic.markNow()).inWholeSeconds.coerceAtLeast(0).toInt()
     }

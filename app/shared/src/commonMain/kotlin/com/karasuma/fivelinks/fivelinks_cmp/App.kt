@@ -234,13 +234,22 @@ fun App(
                                                     syncOfflineMatchResult(nextState, difficulty)
                                                 }
                                             } else {
-                                                val toSave = SavedOfflineGame(gameState = nextState, aiDifficulty = difficulty)
+                                                val prevElapsed = savedGame?.elapsedSeconds ?: 0
+                                                val toSave = SavedOfflineGame(
+                                                    gameState = nextState,
+                                                    aiDifficulty = difficulty,
+                                                    elapsedSeconds = prevElapsed
+                                                )
                                                 offlineStorage.saveGame(toSave)
                                                 savedGame = toSave
                                             }
                                         }
                                     )
-                                    val initialSave = SavedOfflineGame(gameState = controller.uiState.value.gameState, aiDifficulty = difficulty)
+                                    val initialSave = SavedOfflineGame(
+                                        gameState = controller.uiState.value.gameState,
+                                        aiDifficulty = difficulty,
+                                        elapsedSeconds = 0
+                                    )
                                     offlineStorage.saveGame(initialSave)
                                     savedGame = initialSave
                                     activeController = controller
@@ -263,7 +272,12 @@ fun App(
                                                         syncOfflineMatchResult(nextState, saved.aiDifficulty)
                                                     }
                                                 } else {
-                                                    val toSave = SavedOfflineGame(gameState = nextState, aiDifficulty = saved.aiDifficulty)
+                                                    val prevElapsed = savedGame?.elapsedSeconds ?: saved.elapsedSeconds
+                                                    val toSave = SavedOfflineGame(
+                                                        gameState = nextState,
+                                                        aiDifficulty = saved.aiDifficulty,
+                                                        elapsedSeconds = prevElapsed
+                                                    )
                                                     offlineStorage.saveGame(toSave)
                                                     savedGame = toSave
                                                 }
@@ -346,8 +360,22 @@ fun App(
                         AppScreen.GAME -> {
                             val controller = activeController
                             if (controller != null) {
+                                val initialElapsed = remember(controller) {
+                                    if (controller is OnlineGameController) 0 else (savedGame?.elapsedSeconds ?: 0)
+                                }
                                 GameScreen(
                                     controller = controller,
+                                    initialElapsedSeconds = initialElapsed,
+                                    onElapsedSecondsChanged = { sec ->
+                                        if (controller !is OnlineGameController) {
+                                            val currentSaved = savedGame
+                                            if (currentSaved != null && !currentSaved.gameState.isGameOver) {
+                                                val updated = currentSaved.copy(elapsedSeconds = sec)
+                                                offlineStorage.saveGame(updated)
+                                                savedGame = updated
+                                            }
+                                        }
+                                    },
                                     onExitToMenu = {
                                         if (controller is OnlineGameController) {
                                             exitOnline()
