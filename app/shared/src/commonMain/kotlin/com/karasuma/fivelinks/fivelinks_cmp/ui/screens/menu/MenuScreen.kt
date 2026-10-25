@@ -136,22 +136,22 @@ fun MenuScreen(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             HeroCardFan()
             // The outer cards' tilted corners dip below the fan, so leave room for them.
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Logo()
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "BÀI TÂY  ·  CHIẾN THUẬT  ·  AI",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                letterSpacing = 3.sp,
+                letterSpacing = 2.5.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Resumable game banner if an offline game was left in progress
             if (savedGameSummary != null && onResumeGame != null) {
@@ -201,18 +201,18 @@ fun MenuScreen(
                     SettingToggle(
                         icon = LineIcon.Bolt,
                         title = "Chế độ chiến thuật",
-                        subtitle = "Ghép đôi, đồng chất liền kề và Thiên Phạt",
+                        subtitle = "Ghép bài đặc biệt & Thiên Phạt",
                         checked = settings.enableTactical,
                         onCheckedChange = { onSettingsChange(settings.copy(enableTactical = it)) }
                     )
                 } else {
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "Bạn sẽ chọn luật và tạo hoặc vào phòng ở sảnh online.",
+                        text = "Chọn luật thi đấu và tạo hoặc vào phòng tại sảnh online.",
                         fontSize = 12.sp,
-                        lineHeight = 17.sp,
+                        lineHeight = 16.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
                     )
                 }
 
@@ -220,7 +220,7 @@ fun MenuScreen(
                 SettingToggle(
                     icon = LineIcon.Sparkle,
                     title = "Âm thanh",
-                    subtitle = "Hiệu ứng âm thanh khi chơi",
+                    subtitle = "Âm thanh & hiệu ứng",
                     checked = soundEnabled,
                     onCheckedChange = onToggleSound
                 )
@@ -238,13 +238,13 @@ fun MenuScreen(
                 SettingToggle(
                     icon = LineIcon.Moon,
                     title = "Giao diện ban đêm",
-                    subtitle = "Dịu mắt khi chơi buổi tối",
+                    subtitle = "Chế độ tối dịu mắt",
                     checked = isNightTheme,
                     onCheckedChange = onToggleNightTheme
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {
@@ -256,8 +256,8 @@ fun MenuScreen(
                 elevation = null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
-                    .shadow(16.dp, CircleShape, ambientColor = BrandRed, spotColor = BrandRed)
+                    .height(54.dp)
+                    .shadow(14.dp, CircleShape, ambientColor = BrandRed, spotColor = BrandRed)
             ) {
                 Text(
                     text = if (settings.opponentType == OpponentType.ONLINE) "VÀO SẢNH ONLINE" else "BẮT ĐẦU TRẬN ĐẤU",
@@ -265,36 +265,17 @@ fun MenuScreen(
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.5.sp
                 )
-                Spacer(modifier = Modifier.width(12.dp))
-                LineIconView(icon = LineIcon.ArrowRight, color = PureWhite, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(10.dp))
+                LineIconView(icon = LineIcon.ArrowRight, color = PureWhite, modifier = Modifier.size(18.dp))
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(
-                    onClick = onStartTutorial,
-                    modifier = Modifier.height(44.dp)
-                ) {
-                    LineIconView(
-                        icon = LineIcon.Sparkle,
-                        color = BrandRed,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "HƯỚNG DẪN NHANH",
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = BrandRed
-                    )
-                }
-
                 TextButton(
                     onClick = { showRules = true },
                     modifier = Modifier.height(44.dp)
@@ -302,12 +283,12 @@ fun MenuScreen(
                     LineIconView(
                         icon = LineIcon.Help,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "LUẬT CHI TIẾT",
-                        fontSize = 11.5.sp,
+                        text = "LUẬT CHƠI",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -315,7 +296,7 @@ fun MenuScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
 
@@ -445,12 +426,12 @@ private fun HeroCardFan(modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         spread.animateTo(1f, spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessLow))
     }
-    val cardWidth = 58.dp
+    val cardWidth = 52.dp
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(cardWidth * 1.5f + 28.dp),
+            .height(cardWidth * 1.35f + 14.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         cards.forEachIndexed { index, card ->
