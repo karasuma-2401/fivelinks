@@ -241,7 +241,7 @@ fun GameScreen(
                                 validPlacementPositions = uiState.validPlacementPositions,
                                 validSnipePositions = uiState.validSnipePositions,
                                 hoveredPosition = hoveredDropPosition,
-                                onBoardPositioned = { rect -> boardBounds = rect },
+                                onBoardPositioned = { rect -> if (boardBounds != rect) boardBounds = rect },
                                 onCellClick = { pos -> controller.onCellClick(pos) }
                             )
                             GameNoticeBanner(
@@ -283,11 +283,18 @@ fun GameScreen(
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            TacticalCraftingBar(
-                                tacticalAction = uiState.activeTacticalAction,
-                                onTriggerDivineWipe = { controller.triggerDivineWipe() }
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(96.dp),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                TacticalCraftingBar(
+                                    tacticalAction = uiState.activeTacticalAction,
+                                    onTriggerDivineWipe = { controller.triggerDivineWipe() }
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
                             HandView(
                                 hand = gameState.handOf(handOwner),
                                 owner = handOwner,
@@ -358,7 +365,7 @@ fun GameScreen(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         BoardGrid(
@@ -366,8 +373,9 @@ fun GameScreen(
                             validPlacementPositions = uiState.validPlacementPositions,
                             validSnipePositions = uiState.validSnipePositions,
                             hoveredPosition = hoveredDropPosition,
-                            onBoardPositioned = { rect -> boardBounds = rect },
-                            onCellClick = { pos -> controller.onCellClick(pos) }
+                            onBoardPositioned = { rect -> if (boardBounds != rect) boardBounds = rect },
+                            onCellClick = { pos -> controller.onCellClick(pos) },
+                            modifier = Modifier.padding(bottom = 52.dp)
                         )
                         GameNoticeBanner(
                             notice = notice,
@@ -398,12 +406,12 @@ fun GameScreen(
                                 color = BrandRed,
                             )
                         }
+                        TacticalCraftingBar(
+                            tacticalAction = uiState.activeTacticalAction,
+                            onTriggerDivineWipe = { controller.triggerDivineWipe() },
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        )
                     }
-
-                    TacticalCraftingBar(
-                        tacticalAction = uiState.activeTacticalAction,
-                        onTriggerDivineWipe = { controller.triggerDivineWipe() }
-                    )
 
                     HandView(
                         hand = gameState.handOf(handOwner),

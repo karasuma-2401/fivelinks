@@ -1,10 +1,13 @@
 package com.karasuma.fivelinks.fivelinks_cmp.ui.components
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -51,12 +54,14 @@ fun TacticalCraftingBar(
     onTriggerDivineWipe: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // AnimatedContent keeps rendering the outgoing action while it collapses.
+    // Use GPU-friendly fade + slide/scale without per-frame SizeTransform layout passes
+    // so the 10x10 board never shifts or re-measures when selecting/deselecting cards.
     AnimatedContent(
         targetState = tacticalAction,
         contentKey = { action -> action?.let { it::class } },
         transitionSpec = {
-            fadeIn(tween(220)) togetherWith fadeOut(tween(150)) using SizeTransform(clip = false)
+            (fadeIn(tween(180)) + slideInVertically(tween(180)) { it / 4 } + scaleIn(initialScale = 0.96f, animationSpec = tween(180)))
+                .togetherWith(fadeOut(tween(120)) + slideOutVertically(tween(120)) { it / 5 } + scaleOut(targetScale = 0.96f, animationSpec = tween(120)))
         },
         modifier = modifier.fillMaxWidth()
     ) { action ->
@@ -79,13 +84,12 @@ private fun TacticalCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            // Extra room below: a selected hand card lifts into this space.
-            .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 14.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)
             .shadow(if (isNight) 0.dp else 10.dp, shape)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surface)
             .then(if (isNight) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, shape) else Modifier)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // The "recipe": the selected cards and, for a combo, the jack it becomes.
@@ -124,14 +128,14 @@ private fun TacticalCard(
 
         // The legendary move gets a full-width trigger.
         if (action is TacticalAction.DivineWipe) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Button(
                 onClick = onTriggerDivineWipe,
                 colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = BrandDark),
                 shape = CircleShape,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp)
+                    .height(42.dp)
             ) {
                 LineIconView(icon = LineIcon.Bolt, color = BrandDark, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(8.dp))
