@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
@@ -365,8 +367,9 @@ fun GameScreen(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        contentAlignment = Alignment.Center
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .zIndex(2f),
+                        contentAlignment = Alignment.TopCenter
                     ) {
                         BoardGrid(
                             gameState = gameState,
@@ -375,7 +378,7 @@ fun GameScreen(
                             hoveredPosition = hoveredDropPosition,
                             onBoardPositioned = { rect -> if (boardBounds != rect) boardBounds = rect },
                             onCellClick = { pos -> controller.onCellClick(pos) },
-                            modifier = Modifier.padding(bottom = 52.dp)
+                            modifier = Modifier.padding(top = 4.dp, bottom = 64.dp)
                         )
                         GameNoticeBanner(
                             notice = notice,
@@ -409,7 +412,9 @@ fun GameScreen(
                         TacticalCraftingBar(
                             tacticalAction = uiState.activeTacticalAction,
                             onTriggerDivineWipe = { controller.triggerDivineWipe() },
-                            modifier = Modifier.align(Alignment.BottomCenter)
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .offset(y = 20.dp)
                         )
                     }
 
